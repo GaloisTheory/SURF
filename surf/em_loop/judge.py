@@ -35,7 +35,7 @@ class SingleJudgeSystem:
             thinking_budget: Token budget for extended thinking
         """
         self.principle_specific_details = principle_specific_details
-        self.use_thinking = use_thinking and model.startswith("anthropic:")
+        self.use_thinking = use_thinking
         self.thinking_budget = thinking_budget
 
         self.model_resource = ModelResource.from_string(

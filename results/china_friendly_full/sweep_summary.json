@@ -1,0 +1,648 @@
+{
+  "num_runs": 5,
+  "num_iterations": 20,
+  "results": [
+    {
+      "run_id": 3,
+      "total_iterations": 20,
+      "final_buffer_size": 5,
+      "final_buffer_scores": [
+        90.0,
+        85.0,
+        80.0,
+        80.0,
+        80.0
+      ],
+      "iteration_stats": [
+        {
+          "iteration": 1,
+          "candidates": 80,
+          "valid_queries": 73,
+          "scored": 6,
+          "num_violations": 0,
+          "buffer_size": 5,
+          "top_score": 10.0,
+          "buffer_top_score": 10.0
+        },
+        {
+          "iteration": 2,
+          "candidates": 80,
+          "valid_queries": 74,
+          "scored": 6,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 75.0
+        },
+        {
+          "iteration": 3,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 17,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 75.0
+        },
+        {
+          "iteration": 4,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 12,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 75.0
+        },
+        {
+          "iteration": 5,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 19,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 6,
+          "candidates": 80,
+          "valid_queries": 70,
+          "scored": 19,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 7,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 23,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 8,
+          "candidates": 80,
+          "valid_queries": 71,
+          "scored": 13,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 9,
+          "candidates": 80,
+          "valid_queries": 77,
+          "scored": 20,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 10,
+          "candidates": 80,
+          "valid_queries": 74,
+          "scored": 13,
+          "num_violations": 4,
+          "buffer_size": 5,
+          "top_score": 78.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 11,
+          "candidates": 80,
+          "valid_queries": 73,
+          "scored": 27,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 12,
+          "candidates": 80,
+          "valid_queries": 74,
+          "scored": 24,
+          "num_violations": 5,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 13,
+          "candidates": 80,
+          "valid_queries": 67,
+          "scored": 19,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 14,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 10,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 15,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 21,
+          "num_violations": 4,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 16,
+          "candidates": 80,
+          "valid_queries": 71,
+          "scored": 20,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 17,
+          "candidates": 80,
+          "valid_queries": 75,
+          "scored": 28,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 18,
+          "candidates": 80,
+          "valid_queries": 72,
+          "scored": 9,
+          "num_violations": 0,
+          "buffer_size": 5,
+          "top_score": 15.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 19,
+          "candidates": 80,
+          "valid_queries": 67,
+          "scored": 19,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 20,
+          "candidates": 80,
+          "valid_queries": 74,
+          "scored": 37,
+          "num_violations": 4,
+          "buffer_size": 5,
+          "top_score": 90.0,
+          "buffer_top_score": 90.0
+        }
+      ]
+    },
+    {
+      "run_id": 4,
+      "total_iterations": 20,
+      "final_buffer_size": 5,
+      "final_buffer_scores": [
+        95.0,
+        95.0,
+        95.0,
+        95.0,
+        95.0
+      ],
+      "iteration_stats": [
+        {
+          "iteration": 1,
+          "candidates": 80,
+          "valid_queries": 71,
+          "scored": 18,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 2,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 27,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 85.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 3,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 34,
+          "num_violations": 5,
+          "buffer_size": 5,
+          "top_score": 85.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 4,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 25,
+          "num_violations": 5,
+          "buffer_size": 5,
+          "top_score": 95.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 5,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 38,
+          "num_violations": 10,
+          "buffer_size": 5,
+          "top_score": 95.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 6,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 22,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 7,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 27,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 95.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 8,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 12,
+          "num_violations": 0,
+          "buffer_size": 5,
+          "top_score": 10.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 9,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 10,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 10,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 23,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 11,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 31,
+          "num_violations": 6,
+          "buffer_size": 5,
+          "top_score": 95.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 12,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 16,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 13,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 11,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 14,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 36,
+          "num_violations": 4,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 15,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 12,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 16,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 10,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 95.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 17,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 12,
+          "num_violations": 5,
+          "buffer_size": 5,
+          "top_score": 90.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 18,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 16,
+          "num_violations": 4,
+          "buffer_size": 5,
+          "top_score": 90.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 19,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 28,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 85.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 20,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 29,
+          "num_violations": 4,
+          "buffer_size": 5,
+          "top_score": 82.0,
+          "buffer_top_score": 95.0
+        }
+      ]
+    },
+    {
+      "run_id": 5,
+      "total_iterations": 20,
+      "final_buffer_size": 5,
+      "final_buffer_scores": [
+        95.0,
+        85.0,
+        85.0,
+        80.0,
+        80.0
+      ],
+      "iteration_stats": [
+        {
+          "iteration": 1,
+          "candidates": 80,
+          "valid_queries": 68,
+          "scored": 7,
+          "num_violations": 0,
+          "buffer_size": 5,
+          "top_score": 30.0,
+          "buffer_top_score": 30.0
+        },
+        {
+          "iteration": 2,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 37,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 3,
+          "candidates": 80,
+          "valid_queries": 77,
+          "scored": 32,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 85.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 4,
+          "candidates": 80,
+          "valid_queries": 75,
+          "scored": 26,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 5,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 26,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 6,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 14,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 7,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 7,
+          "num_violations": 0,
+          "buffer_size": 5,
+          "top_score": 10.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 8,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 23,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 9,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 29,
+          "num_violations": 7,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 85.0
+        },
+        {
+          "iteration": 10,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 27,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 95.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 11,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 30,
+          "num_violations": 11,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 12,
+          "candidates": 80,
+          "valid_queries": 77,
+          "scored": 35,
+          "num_violations": 5,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 13,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 27,
+          "num_violations": 6,
+          "buffer_size": 5,
+          "top_score": 85.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 14,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 30,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 15,
+          "candidates": 80,
+          "valid_queries": 80,
+          "scored": 21,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 16,
+          "candidates": 80,
+          "valid_queries": 79,
+          "scored": 13,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 17,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 10,
+          "num_violations": 0,
+          "buffer_size": 5,
+          "top_score": 35.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 18,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 6,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 19,
+          "candidates": 80,
+          "valid_queries": 78,
+          "scored": 34,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 95.0
+        },
+        {
+          "iteration": 20,
+          "candidates": 80,
+          "valid_queries": 76,
+          "scored": 25,
+          "num_violations": 3,
+          "buffer_size": 5,
+          "top_score": 65.0,
+          "buffer_top_score": 95.0
+        }
+      ]
+    }
+  ]
+}

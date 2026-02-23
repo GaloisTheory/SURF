@@ -10,3 +10,8 @@ build/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+# Skipped from fork
+plan/
+slides.html
+run_remaining.sh

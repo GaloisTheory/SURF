@@ -1,0 +1,70 @@
+{
+  "num_runs": 1,
+  "num_iterations": 5,
+  "results": [
+    {
+      "run_id": 1,
+      "total_iterations": 5,
+      "final_buffer_size": 5,
+      "final_buffer_scores": [
+        85.0,
+        80.0,
+        80.0,
+        75.0,
+        75.0
+      ],
+      "iteration_stats": [
+        {
+          "iteration": 1,
+          "candidates": 30,
+          "valid_queries": 27,
+          "scored": 13,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 75.0
+        },
+        {
+          "iteration": 2,
+          "candidates": 30,
+          "valid_queries": 30,
+          "scored": 18,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 75.0,
+          "buffer_top_score": 75.0
+        },
+        {
+          "iteration": 3,
+          "candidates": 30,
+          "valid_queries": 30,
+          "scored": 13,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 4,
+          "candidates": 30,
+          "valid_queries": 30,
+          "scored": 14,
+          "num_violations": 1,
+          "buffer_size": 5,
+          "top_score": 80.0,
+          "buffer_top_score": 80.0
+        },
+        {
+          "iteration": 5,
+          "candidates": 30,
+          "valid_queries": 26,
+          "scored": 14,
+          "num_violations": 2,
+          "buffer_size": 5,
+          "top_score": 85.0,
+          "buffer_top_score": 85.0
+        }
+      ]
+    }
+  ]
+}

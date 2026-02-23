@@ -272,6 +272,43 @@ class ModelResource:
         if not response.choices:
             raise ValueError("API returned empty choices - possible rate limit or error")
         return response.choices[0].message.content or ""
+    
+    @_retry_decorator
+    async def _call_openai_impl_with_thinking(
+        self,
+        base_url: str,
+        api_key: str,
+        messages: List[Dict[str, Any]],
+        max_tokens: int = 16384,
+        temperature: float = 1.0,
+        stop: Optional[List[str]] = None,
+        thinking_budget: int = 10000,
+    ) -> Tuple[str, Optional[str]]:
+        """Call OpenAI-compatible API with reasoning enabled, using shared client."""
+        client = self._get_openai_client(base_url, api_key)
+        extra_body = {
+            "reasoning": {
+                "max_tokens": thinking_budget
+            },
+        }
+        response = await client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stop=stop,
+            extra_body=extra_body,
+        )
+
+        if not response.choices:
+            raise ValueError("API returned empty choices - possible rate limit or error")
+
+        msg = response.choices[0].message
+        reasoning = getattr(msg, 'reasoning', None)
+        if reasoning is None and hasattr(msg, 'model_extra'):
+            reasoning = msg.model_extra.get('reasoning')
+        return msg.content or "", reasoning
+    
 
     @classmethod
     def from_string(
@@ -404,14 +441,11 @@ class ModelResource:
         **kwargs
     ) -> Tuple[str, str]:
         """
-        Call with extended thinking (Anthropic only).
+        Call with extended thinking (Anthropic and OpenRouter).
 
         Returns:
             Tuple of (response_text, thinking_text)
         """
-        if self.provider != "anthropic":
-            raise ValueError("Extended thinking is only supported for Anthropic models")
-
         messages = [{"role": "user", "content": query}]
         params = QueryParams(
             max_tokens=kwargs.get("max_tokens", self.query_params.max_tokens),
@@ -425,14 +459,28 @@ class ModelResource:
             stop_list = [params.stop] if isinstance(params.stop, str) else params.stop
 
         async with self._semaphore:
-            text, thinking = await self._call_anthropic_impl(
-                messages=messages,
-                max_tokens=params.max_tokens,
-                temperature=params.temperature,
-                stop=stop_list,
-                thinking_budget=thinking_budget,
-            )
-            return text, thinking or ""
+            if self.provider == "anthropic":
+                text, thinking = await self._call_anthropic_impl(
+                    messages=messages,
+                    max_tokens=params.max_tokens,
+                    temperature=params.temperature,
+                    stop=stop_list,
+                    thinking_budget=thinking_budget,
+                )
+                return text, thinking or ""
+            elif self.provider == "openrouter":
+                text, thinking = await self._call_openai_impl_with_thinking(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=self.provider_model.api_key or os.getenv("OPENROUTER_API_KEY", ""),
+                    messages=messages,
+                    max_tokens=params.max_tokens,
+                    temperature=params.temperature,
+                    stop=stop_list,
+                    thinking_budget=thinking_budget,
+                )
+                return text, thinking or ""
+            else:
+                raise ValueError(f"Extended thinking is not supported for provider: {self.provider}")
 
     async def shutdown(self):
         """Shutdown any managed resources (clients, vLLM servers)."""

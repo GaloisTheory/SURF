@@ -14,7 +14,7 @@ from surf.core.streaming import JSONStreamer
 from surf.core.utils import parse_xml_tags_optional, render_jinja, tqdm_gather
 from surf.em_loop.buffer import ReplayBuffer
 from surf.em_loop.judge import SingleJudgeSystem, get_principle_from_rubric, load_rubric
-from surf.em_loop.prompts import QUERY_GEN_PROMPT, QUERY_GEN_STOP_TOKEN
+from surf.em_loop.prompts import QUERY_GEN_PROMPT, QUERY_GEN_STOP_TOKEN, TOPIC_GUIDED_QUERY_GEN_PROMPT
 from surf.em_loop.sampling import (
     AttributeFileLoader,
     build_weighted_attribute_pool,
@@ -43,6 +43,7 @@ class EMLoop:
         target_concurrency: int = 50,
         query_concurrency: int = 50,
         judge_concurrency: int = 20,
+        target_max_tokens: int = 16384,
         use_thinking: bool = True,
         thinking_budget: int = 10000,
     ):
@@ -69,6 +70,7 @@ class EMLoop:
         # Load rubric
         self.rubric = load_rubric(rubric_path)
         self.principle_specific_details = get_principle_from_rubric(self.rubric)
+        self.topic_guidance = self.rubric.get("topic_guidance")
 
         if not self.principle_specific_details:
             raise ValueError(f"No principle_specific_details found in {rubric_path}")
@@ -98,7 +100,7 @@ class EMLoop:
         self.target_model = ModelResource.from_string(
             target_model,
             max_concurrency=target_concurrency,
-            max_tokens=2048,
+            max_tokens=target_max_tokens,
             temperature=1.0,
         )
 
@@ -245,10 +247,17 @@ class EMLoop:
         # Format attributes as text
         attributes_text = "\n".join(f"- {attr}" for attr in attributes)
 
-        prompt = render_jinja(
-            QUERY_GEN_PROMPT,
-            attributes_text=attributes_text,
-        )
+        if self.topic_guidance:
+            prompt = render_jinja(
+                TOPIC_GUIDED_QUERY_GEN_PROMPT,
+                attributes_text=attributes_text,
+                topic_guidance=self.topic_guidance,
+            )
+        else:
+            prompt = render_jinja(
+                QUERY_GEN_PROMPT,
+                attributes_text=attributes_text,
+            )
 
         try:
             response = await self.query_model.call(prompt)

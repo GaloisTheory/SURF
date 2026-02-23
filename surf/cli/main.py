@@ -752,6 +752,12 @@ def prepare_dataset(
     help="Max concurrent calls to judge model",
 )
 @click.option(
+    "--target-max-tokens",
+    type=int,
+    default=16384,
+    help="Max tokens for target model responses (increase for thinking models)",
+)
+@click.option(
     "--no-thinking",
     is_flag=True,
     help="Disable extended thinking for judge",
@@ -775,6 +781,7 @@ def run_em(
     target_concurrency: int,
     query_concurrency: int,
     judge_concurrency: int,
+    target_max_tokens: int,
     no_thinking: bool,
     thinking_budget: int,
 ):
@@ -839,6 +846,7 @@ def run_em(
             target_concurrency=target_concurrency,
             query_concurrency=query_concurrency,
             judge_concurrency=judge_concurrency,
+            target_max_tokens=target_max_tokens,
             use_thinking=not no_thinking,
             thinking_budget=thinking_budget,
         )

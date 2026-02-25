@@ -9,7 +9,7 @@ from pathlib import Path
 
 import click
 import numpy as np
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from dotenv import load_dotenv
 
 from surf.clustering.cluster import AttributeClusterer
@@ -17,6 +17,7 @@ from surf.clustering.embeddings import EmbeddingComputer
 from surf.clustering.pseudo_sae import PseudoSAEBuilder
 from surf.clustering.summarize import ClusterSummarizer
 from surf.em_loop.judge import get_principle_from_rubric, load_rubric
+from surf.em_loop.diff_loop import DiffEMLoop
 from surf.em_loop.loop import EMLoop
 from surf.em_loop.sweep import Sweep
 from surf.extraction.batch import BatchExtractor
@@ -59,6 +60,14 @@ def _get_embeddings_count(path: Path) -> int:
         return 0
     embeds = np.load(path, mmap_mode='r')
     return embeds.shape[0]
+
+
+def _load_dataset_auto(dataset: str, split: str = "train"):
+    """Load a dataset from HuggingFace hub or local Arrow directory."""
+    local_path = Path(dataset)
+    if local_path.exists() and local_path.is_dir():
+        return load_from_disk(str(local_path))
+    return load_dataset(dataset, split=split)
 
 
 def _get_clustering_metadata(path: Path) -> dict:
@@ -572,7 +581,7 @@ def prepare_dataset(
 
     try:
         # Stage 1: Extract attributes
-        ds = load_dataset(dataset, split="train")
+        ds = _load_dataset_auto(dataset)
         target_count = min(num_samples, len(ds)) if num_samples else len(ds)
         existing_count = _count_jsonl_records(attributes_file)
         need_extraction = force or existing_count < target_count
@@ -629,11 +638,13 @@ def prepare_dataset(
         else:
             click.echo(f"\n[3/5] Clustering: skipped ({cluster_meta.get('non_empty_clusters', 0):,} clusters)")
 
-        # Stage 4: Summarization
-        need_summarization = force or need_clustering or not summaries_file.exists()
+        # Stage 4: Summarization (supports resume — re-runs only missing clusters)
+        summary_count = _count_jsonl_records(summaries_file)
+        cluster_count = _count_jsonl_records(top_attrs_file)
+        need_summarization = force or need_clustering or summary_count < cluster_count
 
         if need_summarization:
-            click.echo(f"\n[4/5] Summarization: running...")
+            click.echo(f"\n[4/5] Summarization: {summary_count:,}/{cluster_count:,}")
             summarizer = ClusterSummarizer(
                 model=summarize_model,
                 max_concurrency=summarize_concurrency,
@@ -643,10 +654,10 @@ def prepare_dataset(
                 output_path=str(summaries_file),
             ))
         else:
-            click.echo(f"\n[4/5] Summarization: skipped ({_count_jsonl_records(summaries_file):,} summaries)")
+            click.echo(f"\n[4/5] Summarization: skipped ({summary_count:,} summaries)")
 
         # Stage 5: Pseudo-SAE
-        need_pseudo_sae = force or need_clustering or not pseudo_sae_file.exists()
+        need_pseudo_sae = force or need_clustering or need_summarization or not pseudo_sae_file.exists()
 
         if need_pseudo_sae:
             click.echo(f"\n[5/5] Pseudo-SAE: building...")
@@ -768,6 +779,11 @@ def prepare_dataset(
     default=10000,
     help="Token budget for extended thinking",
 )
+@click.option(
+    "--strip-think",
+    is_flag=True,
+    help="Strip <think> blocks from target responses before judging",
+)
 def run_em(
     rubric: str,
     attributes: str,
@@ -784,6 +800,7 @@ def run_em(
     target_max_tokens: int,
     no_thinking: bool,
     thinking_budget: int,
+    strip_think: bool,
 ):
     """Run the EM loop for red-teaming.
 
@@ -832,6 +849,8 @@ def run_em(
     click.echo(f"Buffer size: {buffer_size}")
     click.echo(f"Candidates per iteration: {candidates}")
     click.echo(f"Output dir: {output_dir}")
+    if strip_think:
+        click.echo(f"Strip <think> blocks: enabled")
 
     try:
         loop = EMLoop(
@@ -849,6 +868,7 @@ def run_em(
             target_max_tokens=target_max_tokens,
             use_thinking=not no_thinking,
             thinking_budget=thinking_budget,
+            strip_think=strip_think,
         )
 
         summary = asyncio.run(loop.run_loop(num_iterations=iterations))
@@ -987,6 +1007,161 @@ def sweep(
 
         summary = asyncio.run(sweep_exp.run_sweep())
         click.echo(f"\nSweep complete. Results in {output_dir}/")
+
+    except KeyboardInterrupt:
+        click.echo("\nInterrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"\nError: {e}", err=True)
+        raise
+
+
+@cli.command("run-diff")
+@click.option(
+    "--rubric",
+    "-r",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to YAML rubric file with divergence scoring guidelines",
+)
+@click.option(
+    "--attributes",
+    "-a",
+    default="seoirsem/CHUNKY-tulu3-SFT-25k-attributes",
+    help="HuggingFace dataset ID or path to local JSONL file",
+)
+@click.option(
+    "--model-a",
+    required=True,
+    help="First model (e.g., http://localhost:8000/v1:model-name)",
+)
+@click.option(
+    "--model-b",
+    required=True,
+    help="Second model (e.g., http://localhost:8001/v1:model-name)",
+)
+@click.option("--model-a-name", default="a", help="Display name for model A")
+@click.option("--model-b-name", default="b", help="Display name for model B")
+@click.option("--model-a-max-tokens", type=int, default=4096, help="Max tokens for model A")
+@click.option("--model-b-max-tokens", type=int, default=12288, help="Max tokens for model B")
+@click.option("--model-a-temperature", type=float, default=0.7, help="Temperature for model A")
+@click.option("--model-b-temperature", type=float, default=0.7, help="Temperature for model B")
+@click.option(
+    "--judge-model",
+    default="anthropic:claude-opus-4-5-20251101",
+    help="Model for paired judging",
+)
+@click.option(
+    "--query-model",
+    default="openrouter:meta-llama/llama-3.1-70b-instruct",
+    help="Model for query generation",
+)
+@click.option("--iterations", "-n", type=int, default=20, help="Number of iterations")
+@click.option("--buffer-size", type=int, default=5, help="Replay buffer size")
+@click.option("--candidates", type=int, default=80, help="Candidates per iteration")
+@click.option(
+    "--output-dir",
+    "-o",
+    required=True,
+    help="Output directory for results",
+)
+@click.option("--target-concurrency", type=int, default=50, help="Max concurrent calls per target model")
+@click.option("--query-concurrency", type=int, default=50, help="Max concurrent calls to query model")
+@click.option("--judge-concurrency", type=int, default=20, help="Max concurrent calls to judge model")
+@click.option("--no-thinking", is_flag=True, help="Disable extended thinking for judge")
+@click.option("--thinking-budget", type=int, default=10000, help="Token budget for extended thinking")
+@click.option("--early-stop-threshold", type=float, default=10.0, help="Early stop if no score above this in 5 iters")
+def run_diff(
+    rubric: str,
+    attributes: str,
+    model_a: str,
+    model_b: str,
+    model_a_name: str,
+    model_b_name: str,
+    model_a_max_tokens: int,
+    model_b_max_tokens: int,
+    model_a_temperature: float,
+    model_b_temperature: float,
+    judge_model: str,
+    query_model: str,
+    iterations: int,
+    buffer_size: int,
+    candidates: int,
+    output_dir: str,
+    target_concurrency: int,
+    query_concurrency: int,
+    judge_concurrency: int,
+    no_thinking: bool,
+    thinking_budget: int,
+    early_stop_threshold: float,
+):
+    """Run differential EM loop comparing two models.
+
+    Generates queries, gets responses from BOTH models, and scores
+    behavioral divergence with a paired judge. The EM loop converges
+    toward regions of maximum divergence between the models.
+
+    Model formats:
+        - anthropic:model-name     Anthropic API
+        - openrouter:model-name    OpenRouter API
+        - vllm:model-name          Auto-managed local vLLM server
+        - http://host:port/v1:model  Custom OpenAI-compatible server
+
+    Examples:
+
+        # Compare local vLLM models
+        surf run-diff \\
+            --rubric rubrics/model_diff.yaml \\
+            --attributes data/dolci-25k/pseudo_sae_attributes.jsonl \\
+            --model-a "http://localhost:8000/v1:allenai/OLMo-3-1025-7B" \\
+            --model-b "http://localhost:8001/v1:allenai/OLMo-3-7B-Think-SFT" \\
+            --model-a-name base --model-b-name sft \\
+            --iterations 20 --candidates 80 \\
+            -o results/olmo3_diff
+    """
+    click.echo(f"Running Diff EM loop")
+    click.echo(f"Rubric: {rubric}")
+    click.echo(f"Model A ({model_a_name}): {model_a}")
+    click.echo(f"Model B ({model_b_name}): {model_b}")
+    click.echo(f"Judge: {judge_model}")
+    click.echo(f"Query model: {query_model}")
+    click.echo(f"Iterations: {iterations}, Candidates: {candidates}, Buffer: {buffer_size}")
+    click.echo(f"Output dir: {output_dir}")
+
+    try:
+        loop = DiffEMLoop(
+            rubric_path=rubric,
+            attributes=attributes,
+            model_a=model_a,
+            model_b=model_b,
+            model_a_name=model_a_name,
+            model_b_name=model_b_name,
+            judge_model=judge_model,
+            query_model=query_model,
+            buffer_size=buffer_size,
+            candidates_per_iter=candidates,
+            output_dir=output_dir,
+            model_a_max_tokens=model_a_max_tokens,
+            model_b_max_tokens=model_b_max_tokens,
+            model_a_temperature=model_a_temperature,
+            model_b_temperature=model_b_temperature,
+            target_concurrency=target_concurrency,
+            query_concurrency=query_concurrency,
+            judge_concurrency=judge_concurrency,
+            use_thinking=not no_thinking,
+            thinking_budget=thinking_budget,
+            early_stop_threshold=early_stop_threshold,
+        )
+
+        summary = asyncio.run(loop.run_loop(num_iterations=iterations))
+
+        click.echo(f"\n{'='*60}")
+        click.echo("Diff EM Loop Complete")
+        click.echo(f"{'='*60}")
+        click.echo(f"Total iterations: {summary.get('total_iterations', 'N/A')}")
+        click.echo(f"Final buffer size: {summary.get('final_buffer_size', 'N/A')}")
+        click.echo(f"Final buffer scores: {[round(s, 1) for s in summary.get('final_buffer_scores', [])]}")
+        click.echo(f"Results saved to: {output_dir}/")
 
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user")

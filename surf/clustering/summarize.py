@@ -124,8 +124,30 @@ class ClusterSummarizer:
 
         print(f"Loaded {len(clusters)} clusters to summarize")
 
+        # Resume: load existing summaries and skip already-done clusters
+        existing_summaries: List[Dict[str, Any]] = []
+        done_ids: set = set()
+        if output_path.exists() and output_path.stat().st_size > 0:
+            with open(output_path, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        if "cluster_id" in rec:
+                            existing_summaries.append(rec)
+                            done_ids.add(rec["cluster_id"])
+                    except (json.JSONDecodeError, KeyError) as e:
+                        print(f"Warning: skipping corrupted line: {line[:80]}... ({e})")
+                        continue
+            print(f"Checkpoint: {len(done_ids)} clusters already summarized, skipping")
+
+        clusters = [c for c in clusters if c["cluster_id"] not in done_ids]
+        print(f"Clusters to process: {len(clusters)}")
+
         # Process in batches
-        summaries: List[Dict[str, Any]] = []
+        summaries: List[Dict[str, Any]] = list(existing_summaries)
 
         for batch_start in tqdm(range(0, len(clusters), batch_size), desc="Summarizing batches"):
             batch = clusters[batch_start:batch_start + batch_size]
@@ -148,12 +170,14 @@ class ClusterSummarizer:
                 if result is not None and not isinstance(result, Exception):
                     summaries.append(result)
 
-        # Sort by cluster_id and save
+        # Sort by cluster_id and save (atomic write to prevent data loss)
         summaries.sort(key=lambda x: x["cluster_id"])
 
-        with open(output_path, "w") as f:
+        tmp_path = Path(str(output_path) + ".tmp")
+        with open(tmp_path, "w") as f:
             for summary in summaries:
                 f.write(json.dumps(summary) + "\n")
+        tmp_path.rename(output_path)
 
         print(f"Saved {len(summaries)} cluster summaries to {output_path}")
         return len(summaries)

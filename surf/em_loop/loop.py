@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import re
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -20,6 +21,13 @@ from surf.em_loop.sampling import (
     build_weighted_attribute_pool,
     sample_attributes_for_candidate,
 )
+
+
+def strip_think_blocks(text: str) -> str:
+    """Strip <think>...</think> blocks from text. Handles multiple blocks and unclosed tags."""
+    stripped = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    stripped = re.sub(r"<think>.*$", "", stripped, flags=re.DOTALL)
+    return stripped.strip()
 
 
 class EMLoop:
@@ -46,6 +54,7 @@ class EMLoop:
         target_max_tokens: int = 16384,
         use_thinking: bool = True,
         thinking_budget: int = 10000,
+        strip_think: bool = False,
     ):
         """
         Initialize the EM loop.
@@ -66,6 +75,7 @@ class EMLoop:
             judge_concurrency: Max concurrent calls to judge model
             use_thinking: Whether to use extended thinking for judge
             thinking_budget: Token budget for extended thinking
+            strip_think: Whether to strip <think> blocks before judging
         """
         # Load rubric
         self.rubric = load_rubric(rubric_path)
@@ -80,6 +90,7 @@ class EMLoop:
         self.buffer_size = buffer_size
         self.candidates_per_iter = candidates_per_iter
         self.output_dir = Path(output_dir)
+        self.strip_think = strip_think
 
         # Initialize attribute loader (supports HuggingFace or local file)
         self.attribute_loader = AttributeFileLoader(attributes)
@@ -450,12 +461,22 @@ class EMLoop:
         self.status["progress"] = f"0/{len(scorable_candidates)}"
         self._log("Scoring with judge...")
 
+        # Build responses for judging (strip <think> blocks if requested)
+        if self.strip_think:
+            judge_responses = []
+            for c in scorable_candidates:
+                stripped = strip_think_blocks(c["response"])
+                c["response_stripped"] = stripped
+                judge_responses.append(stripped)
+        else:
+            judge_responses = [c["response"] for c in scorable_candidates]
+
         def update_scoring_progress(completed: int, total: int):
             self.status["progress"] = f"{completed}/{total}"
 
         score_results = await self.judge.score_batch(
             queries=[c["query"] for c in scorable_candidates],
-            responses=[c["response"] for c in scorable_candidates],
+            responses=judge_responses,
             quiet=self.quiet,
             on_progress=update_scoring_progress,
         )
@@ -552,6 +573,8 @@ class EMLoop:
         self._log(f"Candidates per iteration: {self.candidates_per_iter}")
         self._log(f"Buffer size: {self.buffer_size}")
         self._log(f"Output dir: {self.output_dir}")
+        if self.strip_think:
+            self._log(f"Strip <think> blocks: enabled")
 
         iteration_stats = []
 

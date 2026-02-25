@@ -2,7 +2,7 @@
 name = "surf"
 version = "0.1.0"
 description = "Self-contained Unified Red-teaming Framework"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.49.0",
     "openai>=1.0.0",

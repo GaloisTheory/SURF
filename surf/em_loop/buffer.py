@@ -43,7 +43,13 @@ class ReplayBuffer:
 
     def _validate_entry(self, entry: Dict[str, Any]):
         """Validate that entry has required fields."""
-        required = {"query", "response", "reward_score"}
+        if "response_a" in entry and "response_b" in entry:
+            required = {"query", "response_a", "response_b", "reward_score"}
+        elif "response_a" in entry or "response_b" in entry:
+            # Must have both if either is present
+            raise ValueError("Entry must have both response_a and response_b, or neither")
+        else:
+            required = {"query", "response", "reward_score"}
         missing = required - set(entry.keys())
         if missing:
             raise ValueError(f"Entry missing required fields: {missing}")
@@ -90,7 +96,13 @@ class ReplayBuffer:
 
     def get_responses(self) -> List[str]:
         """Get all responses in the buffer."""
-        return [e["response"] for e in self.buffer]
+        results = []
+        for e in self.buffer:
+            if "response" in e:
+                results.append(e["response"])
+            elif "response_a" in e:
+                results.append(e["response_a"])
+        return results
 
     def get_scores(self) -> List[float]:
         """Get all scores in the buffer."""

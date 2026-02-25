@@ -7,8 +7,10 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import re
+
 import aiofiles
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from tqdm import tqdm
 
 from surf.core.models import ModelResource
@@ -92,11 +94,21 @@ class AttributeExtractor:
         model_response = await self.model_resource.call(formatted_prompt)
 
         # Parse attributes from XML tags <1> through <10>
+        # Try closed tags first (<1>text</1>), fall back to open tags (<1>text\n<2>...)
         attributes = []
         for i in range(1, 11):
             attr = parse_xml_tags_optional(model_response, str(i))
             if attr:
                 attributes.append(attr.strip())
+
+        if not attributes:
+            # Fallback: match <N>text until next <N> tag or end of string
+            # Handles models (e.g. Gemini) that omit closing tags
+            matches = re.findall(r'<(\d+)>\s*(.*?)(?=<\d+>|$)', model_response, re.DOTALL)
+            for tag_num, text in sorted(matches, key=lambda x: int(x[0])):
+                text = text.strip()
+                if text and int(tag_num) <= 10:
+                    attributes.append(text)
 
         return attributes
 
@@ -176,7 +188,11 @@ class AttributeExtractor:
             Number of records processed
         """
         print(f"Loading dataset: {dataset_name}")
-        dataset = load_dataset(dataset_name, split=split)
+        local_path = Path(dataset_name)
+        if local_path.exists() and local_path.is_dir():
+            dataset = load_from_disk(str(local_path))
+        else:
+            dataset = load_dataset(dataset_name, split=split)
 
         # Limit samples if specified
         total_records = len(dataset)

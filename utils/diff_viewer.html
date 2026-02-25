@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SURF Diff Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3345;
+    --text: #e4e7ef;
+    --text-dim: #8b90a5;
+    --accent: #6c8cff;
+    --accent2: #a78bfa;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --orange: #fb923c;
+    --red: #f87171;
+    --cyan: #22d3ee;
+    --lime: #a3e635;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
+  .header h1 span { color: var(--accent); }
+  .header .meta { display: flex; gap: 16px; color: var(--text-dim); font-size: 0.82rem; }
+  .header .meta strong { color: var(--text); font-weight: 600; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { flex: 1; overflow: hidden; display: none; }
+  .tab-content.active { display: flex; flex-direction: column; }
+  .tab-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Cards & stats */
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 140px;
+  }
+  .stat-card .label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 4px; }
+  .stat-card .value { font-size: 1.4rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .chart-card h3 { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); margin-bottom: 12px; }
+  .chart-card canvas { width: 100% !important; }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  /* Divergence type colors */
+  .div-tag {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  /* Dimension bars */
+  .dim-bars { display: flex; flex-direction: column; gap: 3px; }
+  .dim-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+  }
+  .dim-bar-label {
+    width: 22px;
+    text-align: right;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+  }
+  .dim-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    max-width: 60px;
+  }
+  .dim-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.2s;
+  }
+  .dim-bar-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    width: 10px;
+  }
+
+  /* Split pane */
+  .split-pane { display: flex; flex: 1; overflow: hidden; }
+  .results-list {
+    width: 420px;
+    min-width: 340px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .results-filters {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-row select, .filter-row input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: inherit;
+  }
+  .filter-row select { min-width: 90px; }
+  .filter-row input[type="text"] { flex: 1; }
+  .filter-row label {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .results-scroll { flex: 1; overflow-y: auto; }
+  .result-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .result-item:hover { background: var(--surface); }
+  .result-item.selected { background: var(--surface2); border-left: 3px solid var(--accent); }
+  .result-item .top-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .result-item .query-preview {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .result-item .mini-dims {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+  }
+  .mini-dim {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  .load-more-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: var(--surface2);
+    border: none;
+    color: var(--accent);
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .load-more-btn:hover { background: var(--border); }
+
+  /* Detail pane */
+  .detail-pane { flex: 1; overflow-y: auto; padding: 24px; }
+  .detail-pane .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+  .detail-section { margin-bottom: 20px; }
+  .detail-section h3 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .detail-text {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+
+  /* Side-by-side responses */
+  .side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .response-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .response-col-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .response-col-body {
+    padding: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .response-col-body .detail-text { font-size: 0.85rem; }
+
+  /* Think blocks */
+  .think-block {
+    margin: 8px 0;
+  }
+  .think-block summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 4px 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    user-select: none;
+  }
+  .think-block .think-content {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    padding: 8px 12px;
+    margin-top: 4px;
+    border-left: 2px solid var(--border);
+    opacity: 0.7;
+  }
+
+  /* Dimension score bars (detail view) */
+  .dim-scores-detail { display: flex; flex-direction: column; gap: 6px; }
+  .dim-score-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+  }
+  .dim-score-label {
+    width: 80px;
+    text-transform: capitalize;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .dim-score-track {
+    flex: 1;
+    max-width: 200px;
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .dim-score-fill {
+    height: 100%;
+    border-radius: 5px;
+  }
+  .dim-score-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    width: 20px;
+  }
+
+  .attr-tag {
+    font-size: 0.75rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: var(--text-dim);
+  }
+
+  .collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .collapsible-header::before {
+    content: '\25B6';
+    font-size: 0.65rem;
+    transition: transform 0.15s;
+  }
+  .collapsible-header.open::before { transform: rotate(90deg); }
+  .collapsible-body { display: none; margin-top: 8px; }
+  .collapsible-body.open { display: block; }
+
+  /* Attributes table */
+  .attr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .attr-table th {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .attr-table th:hover { color: var(--text); }
+  .attr-table th.sorted { color: var(--accent); }
+  .attr-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .attr-table tr { cursor: pointer; }
+  .attr-table tr:hover { background: var(--surface); }
+  .attr-table .num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+  }
+
+  /* Stacked dimension bar (overview) */
+  .stacked-bar-container { margin-bottom: 8px; }
+  .stacked-bar-label {
+    font-size: 0.78rem;
+    text-transform: capitalize;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .stacked-bar {
+    display: flex;
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface2);
+  }
+  .stacked-bar-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: rgba(0,0,0,0.8);
+    min-width: 0;
+    transition: width 0.3s;
+  }
+
+  .loading { color: var(--text-dim); text-align: center; padding: 40px; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>SURF</span> Diff Viewer</h1>
+  <div class="meta" id="header-meta"></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="timeline">Timeline</div>
+  <div class="tab" data-tab="results">Results</div>
+  <div class="tab" data-tab="attributes">Attributes</div>
+</div>
+
+<!-- Tab 1: Overview -->
+<div class="tab-content active" id="tab-overview">
+  <div class="tab-scroll" id="overview-scroll">
+    <div class="loading">Loading...</div>
+  </div>
+</div>
+
+<!-- Tab 2: Timeline -->
+<div class="tab-content" id="tab-timeline">
+  <div class="tab-scroll">
+    <div class="chart-grid" id="timeline-charts"></div>
+  </div>
+</div>
+
+<!-- Tab 3: Results -->
+<div class="tab-content" id="tab-results">
+  <div class="split-pane">
+    <div class="results-list">
+      <div class="results-filters" id="results-filters"></div>
+      <div class="results-scroll" id="results-scroll"></div>
+    </div>
+    <div class="detail-pane" id="detail-pane">
+      <div class="empty">Select a result to view details</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: Attributes -->
+<div class="tab-content" id="tab-attributes">
+  <div class="tab-scroll">
+    <div class="card">
+      <table class="attr-table" id="attr-table">
+        <thead><tr>
+          <th data-sort="attribute">Attribute</th>
+          <th data-sort="count">Count</th>
+          <th data-sort="avg_reward">Avg Reward</th>
+          <th data-sort="top_divergence_type">Top Divergence</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Globals ──
+const RUN_COLORS = ['#6c8cff', '#a78bfa', '#4ade80', '#fb923c', '#22d3ee', '#f87171', '#facc15'];
+const DIM_SCORE_COLORS = ['#4ade80', '#a3e635', '#facc15', '#fb923c', '#f87171', '#dc2626']; // 0=green, 1=lime, 2=yellow, 3=orange, 4=red, 5=dark red
+const DIV_TYPE_COLORS = {
+  'CAPABILITY_GAP': '#f87171',
+  'REASONING_DIFFERENCE': '#fb923c',
+  'FACTUAL_DISAGREEMENT': '#facc15',
+  'PREFERENCE_DIVERGENCE': '#a78bfa',
+  'NO_MEANINGFUL_DIVERGENCE': '#4ade80',
+};
+
+let meta = null;
+const tabLoaded = {};
+let currentResultPage = 0;
+let currentFilters = {};
+let selectedResultId = null;
+let attrSortCol = 'avg_reward';
+let attrSortAsc = false;
+let attrData = null;
+
+function divTypeColor(type) {
+  return DIV_TYPE_COLORS[type] || '#8b90a5';
+}
+function divTypeBg(type) {
+  const c = divTypeColor(type);
+  return c + '22';
+}
+function dimColor(score) {
+  return DIM_SCORE_COLORS[Math.min(score, 5)] || '#8b90a5';
+}
+function rewardColor(r) {
+  if (r >= 90) return '#f87171';
+  if (r >= 60) return '#fb923c';
+  if (r >= 30) return '#facc15';
+  return '#4ade80';
+}
+function rewardBg(r) {
+  if (r >= 90) return 'rgba(248,113,113,0.15)';
+  if (r >= 60) return 'rgba(251,146,60,0.15)';
+  if (r >= 30) return 'rgba(250,204,21,0.15)';
+  return 'rgba(74,222,128,0.15)';
+}
+
+async function api(path) {
+  const r = await fetch(path);
+  return r.json();
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function escAttr(s) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── Init ──
+async function init() {
+  meta = await api('/api/meta');
+  document.getElementById('header-meta').innerHTML = `
+    <span><strong>${escHtml(meta.experiment)}</strong></span>
+    <span>${escHtml(meta.model_a_name)} vs ${escHtml(meta.model_b_name)}</span>
+    <span>${meta.run_count} run${meta.run_count !== 1 ? 's' : ''}</span>
+    <span>${meta.total_entries.toLocaleString()} pairs</span>
+  `;
+  loadOverview();
+}
+
+// ── Tab switching ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    const name = tab.dataset.tab;
+    if (name === 'overview' && !tabLoaded.overview) loadOverview();
+    if (name === 'timeline' && !tabLoaded.timeline) loadTimeline();
+    if (name === 'results' && !tabLoaded.results) loadResults();
+    if (name === 'attributes' && !tabLoaded.attributes) loadAttributes();
+  });
+});
+
+// ══════════════════════════════════════════════
+// Tab 1: Overview
+// ══════════════════════════════════════════════
+async function loadOverview() {
+  const data = await api('/api/overview');
+  tabLoaded.overview = true;
+  const container = document.getElementById('overview-scroll');
+
+  // Stats row
+  let html = `<div class="stats-row">
+    <div class="stat-card"><div class="label">Total Pairs</div><div class="value">${data.total_pairs.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Mean Reward</div><div class="value" style="color:${rewardColor(data.mean_reward)}">${data.mean_reward}</div></div>
+    <div class="stat-card"><div class="label">Max Reward</div><div class="value" style="color:${rewardColor(data.max_reward)}">${data.max_reward.toFixed(1)}</div></div>
+    <div class="stat-card"><div class="label">Degenerate Rate</div><div class="value">${data.degenerate_rate}%</div></div>
+  </div>`;
+
+  // Divergence type bar chart
+  const divTypes = Object.entries(data.divergence_types).sort((a, b) => b[1] - a[1]);
+  html += '<div class="card"><h3>Divergence Type Distribution</h3>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px">';
+  const maxCount = divTypes.length ? divTypes[0][1] : 1;
+  divTypes.forEach(([type, count]) => {
+    const pct = (count / data.total_pairs * 100).toFixed(1);
+    const barW = (count / maxCount * 100).toFixed(1);
+    html += `<div style="display:flex;align-items:center;gap:10px">
+      <span style="width:220px;font-size:0.78rem;text-align:right;color:${divTypeColor(type)};font-weight:500">${escHtml(type.replace(/_/g, ' '))}</span>
+      <div style="flex:1;height:16px;background:var(--surface2);border-radius:4px;overflow:hidden">
+        <div style="width:${barW}%;height:100%;background:${divTypeColor(type)};opacity:0.6;border-radius:4px"></div>
+      </div>
+      <span style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim);width:80px">${count} (${pct}%)</span>
+    </div>`;
+  });
+  html += '</div></div>';
+
+  // Dimension distribution stacked bars
+  html += '<div class="card"><h3>Dimension Score Distribution</h3>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;font-size:0.72rem">';
+  [0, 1, 2, 3, 4, 5].forEach(i => {
+    html += `<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:${DIM_SCORE_COLORS[i]}"></span> Score ${i}</span>`;
+  });
+  html += '</div>';
+
+  const dims = meta.dimensions || ['substance', 'safety', 'accuracy', 'reasoning', 'persona'];
+  dims.forEach(dim => {
+    const dist = data.dimension_distribution[dim] || [0, 0, 0, 0, 0, 0];
+    const total = dist.reduce((a, b) => a + b, 0) || 1;
+    html += `<div class="stacked-bar-container">
+      <div class="stacked-bar-label">${dim}</div>
+      <div class="stacked-bar">`;
+    dist.forEach((count, i) => {
+      const pct = (count / total * 100);
+      if (pct > 0) {
+        html += `<div class="stacked-bar-seg" style="width:${pct}%;background:${DIM_SCORE_COLORS[i]}">${pct > 5 ? count : ''}</div>`;
+      }
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════
+// Tab 2: Timeline
+// ══════════════════════════════════════════════
+async function loadTimeline() {
+  const data = await api('/api/timeline');
+  tabLoaded.timeline = data;
+
+  const charts = [
+    { key: 'mean_reward', label: 'Mean Reward per Iteration' },
+    { key: 'max_reward', label: 'Max Reward per Iteration' },
+    { key: 'degenerate_filtered', label: 'Degenerate Count per Iteration' },
+    { key: 'buffer_top', label: 'Buffer Top Scores' },
+  ];
+
+  const grid = document.getElementById('timeline-charts');
+  grid.innerHTML = '';
+
+  charts.forEach(({ key, label }) => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<h3>${label}</h3><canvas></canvas>`;
+    grid.appendChild(card);
+    const canvas = card.querySelector('canvas');
+
+    const datasets = meta.run_ids.map((runId, i) => {
+      const entries = data[runId] || [];
+      return {
+        label: runId.replace('_', ' '),
+        data: entries.map(e => ({
+          x: e.iteration,
+          y: key === 'buffer_top' ? (e.buffer_scores?.[0] ?? null) : e[key]
+        })),
+        borderColor: RUN_COLORS[i % RUN_COLORS.length],
+        backgroundColor: RUN_COLORS[i % RUN_COLORS.length] + '33',
+        tension: 0.3,
+        pointRadius: 2,
+        borderWidth: 2,
+      };
+    });
+
+    new Chart(canvas, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true, labels: { color: '#8b90a5', font: { size: 11 }, boxWidth: 12 } } },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Iteration', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+          y: { ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+        },
+      },
+    });
+  });
+
+  // Divergence type stacked bar per iteration (full width below the 2x2 grid)
+  const divCard = document.createElement('div');
+  divCard.className = 'chart-card';
+  divCard.style.gridColumn = '1 / -1';
+  divCard.innerHTML = '<h3>Divergence Types per Iteration</h3><canvas></canvas>';
+  grid.appendChild(divCard);
+  const divCanvas = divCard.querySelector('canvas');
+
+  // Collect all iterations and divergence types across runs
+  const allDivTypes = new Set();
+  const iterData = {};
+  meta.run_ids.forEach(runId => {
+    (data[runId] || []).forEach(e => {
+      const key = `${runId}_${e.iteration}`;
+      iterData[key] = { label: `${runId.replace('_', ' ')} i${e.iteration}`, divTypes: e.divergence_types || {} };
+      Object.keys(e.divergence_types || {}).forEach(t => allDivTypes.add(t));
+    });
+  });
+
+  const sortedKeys = Object.keys(iterData).sort();
+  const divLabels = sortedKeys.map(k => iterData[k].label);
+  const divTypeList = [...allDivTypes];
+
+  new Chart(divCanvas, {
+    type: 'bar',
+    data: {
+      labels: divLabels,
+      datasets: divTypeList.map(type => ({
+        label: type.replace(/_/g, ' '),
+        data: sortedKeys.map(k => (iterData[k].divTypes[type] || 0)),
+        backgroundColor: divTypeColor(type) + '99',
+      })),
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8b90a5', font: { size: 10 } } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#8b90a5', font: { size: 9 }, maxRotation: 45 }, grid: { display: false } },
+        y: { stacked: true, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+      },
+    },
+  });
+}
+
+// ══════════════════════════════════════════════
+// Tab 3: Results
+// ══════════════════════════════════════════════
+async function loadResults() {
+  tabLoaded.results = true;
+
+  // Collect all divergence types from overview
+  const overview = await api('/api/overview');
+  const divTypes = Object.keys(overview.divergence_types).sort();
+
+  const filtersEl = document.getElementById('results-filters');
+  let divOpts = '<option value="">All types</option>' + divTypes.map(t =>
+    `<option value="${escAttr(t)}">${escHtml(t.replace(/_/g, ' '))}</option>`
+  ).join('');
+  let runOpts = '<option value="">All runs</option>' + meta.run_ids.map(id =>
+    `<option value="${escAttr(id)}">${escHtml(id.replace('_', ' '))}</option>`
+  ).join('');
+  let dimOpts = '<option value="">Default (reward)</option>' + (meta.dimensions || []).map(d =>
+    `<option value="${d}">${d}</option>`
+  ).join('');
+
+  filtersEl.innerHTML = `
+    <div class="filter-row">
+      <select id="filter-run">${runOpts}</select>
+      <select id="filter-div-type">${divOpts}</select>
+      <select id="filter-dim-sort">${dimOpts}</select>
+    </div>
+    <div class="filter-row">
+      <label>Min reward:</label>
+      <input type="number" id="filter-min-reward" value="0" min="0" max="100" style="width:60px">
+      <input type="text" id="filter-search" placeholder="Search queries & responses...">
+    </div>
+    <div id="attr-filter-row" class="filter-row" style="display:none">
+      <span style="font-size:0.78rem;color:var(--text-dim)">Attr:</span>
+      <span id="attr-filter-pill" class="attr-tag" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button id="attr-filter-clear" style="background:var(--surface2);border:1px solid var(--border);color:var(--red);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.78rem">&times;</button>
+    </div>
+  `;
+
+  document.getElementById('attr-filter-clear').addEventListener('click', () => {
+    currentFilters.attribute = '';
+    document.getElementById('attr-filter-row').style.display = 'none';
+    currentResultPage = 0;
+    fetchResults(true);
+  });
+
+  const applyFilters = () => {
+    currentResultPage = 0;
+    currentFilters = {
+      run: document.getElementById('filter-run').value,
+      divergence_type: document.getElementById('filter-div-type').value,
+      dim_sort: document.getElementById('filter-dim-sort').value,
+      min_reward: document.getElementById('filter-min-reward').value || '0',
+      search: document.getElementById('filter-search').value,
+      attribute: currentFilters.attribute || '',
+    };
+    fetchResults(true);
+  };
+
+  document.getElementById('filter-run').addEventListener('change', applyFilters);
+  document.getElementById('filter-div-type').addEventListener('change', applyFilters);
+  document.getElementById('filter-dim-sort').addEventListener('change', applyFilters);
+  document.getElementById('filter-min-reward').addEventListener('change', applyFilters);
+  let searchTimer;
+  document.getElementById('filter-search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 300);
+  });
+
+  fetchResults(true);
+}
+
+function filterByAttribute(attribute) {
+  currentFilters.attribute = attribute;
+  currentResultPage = 0;
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector('[data-tab="results"]').classList.add('active');
+  document.getElementById('tab-results').classList.add('active');
+
+  if (!tabLoaded.results) {
+    loadResults();
+    return;
+  }
+
+  document.getElementById('attr-filter-row').style.display = 'flex';
+  document.getElementById('attr-filter-pill').textContent = attribute;
+  fetchResults(true);
+}
+
+function renderMiniDims(scores) {
+  if (!scores) return '';
+  const dims = ['substance', 'safety', 'accuracy', 'reasoning', 'persona'];
+  return '<div class="mini-dims" title="' + dims.map(d => d[0].toUpperCase() + ':' + (scores[d] ?? 0)).join(' ') + '">' +
+    dims.map(d => {
+      const v = scores[d] ?? 0;
+      return `<div class="mini-dim" style="background:${dimColor(v)}"></div>`;
+    }).join('') + '</div>';
+}
+
+async function fetchResults(replace) {
+  const f = currentFilters;
+  const params = new URLSearchParams({
+    page: currentResultPage,
+    size: 50,
+    run: f.run || '',
+    min_reward: f.min_reward || '0',
+    divergence_type: f.divergence_type || '',
+    dim_sort: f.dim_sort || '',
+    search: f.search || '',
+    attribute: f.attribute || '',
+  });
+
+  const attrRow = document.getElementById('attr-filter-row');
+  if (attrRow) {
+    if (f.attribute) {
+      attrRow.style.display = 'flex';
+      document.getElementById('attr-filter-pill').textContent = f.attribute;
+    } else {
+      attrRow.style.display = 'none';
+    }
+  }
+
+  const data = await api('/api/results?' + params);
+  const scroll = document.getElementById('results-scroll');
+  if (replace) scroll.innerHTML = '';
+
+  data.results.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'result-item' + (r._id === selectedResultId ? ' selected' : '');
+    item.innerHTML = `
+      <div class="top-row">
+        <span class="score-badge" style="color:${rewardColor(r.reward_score)};background:${rewardBg(r.reward_score)}">${r.reward_score.toFixed(1)}</span>
+        <span class="div-tag" style="color:${divTypeColor(r.divergence_type)};background:${divTypeBg(r.divergence_type)}">${escHtml((r.divergence_type || '').replace(/_/g, ' '))}</span>
+        <span style="font-size:0.7rem;color:var(--text-dim)">${r.run_id?.replace('_', ' ')} i${r.iteration}</span>
+      </div>
+      <div class="query-preview">${escHtml(r.query)}</div>
+      ${renderMiniDims(r.scores)}
+    `;
+    item.addEventListener('click', () => selectResult(r._id, item));
+    scroll.appendChild(item);
+  });
+
+  const existing = scroll.querySelector('.load-more-btn');
+  if (existing) existing.remove();
+  if (currentResultPage < data.pages - 1) {
+    const btn = document.createElement('button');
+    btn.className = 'load-more-btn';
+    btn.textContent = `Load more (${data.total - (currentResultPage + 1) * 50} remaining)`;
+    btn.addEventListener('click', () => { currentResultPage++; fetchResults(false); });
+    scroll.appendChild(btn);
+  }
+}
+
+function renderResponse(text) {
+  // Render <think> blocks as collapsible details
+  if (!text) return '';
+  const parts = [];
+  let remaining = text;
+  const regex = /<think>([\s\S]*?)<\/think>/g;
+  let match;
+  let lastIndex = 0;
+
+  while ((match = regex.exec(remaining)) !== null) {
+    // Text before think block
+    if (match.index > lastIndex) {
+      parts.push(`<span class="detail-text">${escHtml(remaining.slice(lastIndex, match.index))}</span>`);
+    }
+    // Think block
+    const thinkContent = match[1].trim();
+    const previewLen = Math.min(80, thinkContent.length);
+    const preview = thinkContent.slice(0, previewLen) + (thinkContent.length > previewLen ? '...' : '');
+    parts.push(`<details class="think-block"><summary>Thinking (${thinkContent.length} chars)</summary><div class="think-content detail-text">${escHtml(thinkContent)}</div></details>`);
+    lastIndex = regex.lastIndex;
+  }
+  // Remaining text after last think block
+  if (lastIndex < remaining.length) {
+    parts.push(`<span class="detail-text">${escHtml(remaining.slice(lastIndex))}</span>`);
+  }
+  return parts.join('');
+}
+
+async function selectResult(id, itemEl) {
+  selectedResultId = id;
+  document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
+  if (itemEl) itemEl.classList.add('selected');
+
+  const pane = document.getElementById('detail-pane');
+  pane.innerHTML = '<div class="loading">Loading...</div>';
+
+  const r = await api('/api/result/' + id);
+  const scores = r.scores || {};
+  const reasoning = r.score_metadata?.reasoning || '';
+  const attrs = r.attributes || [];
+  const dims = meta.dimensions || ['substance', 'safety', 'accuracy', 'reasoning', 'persona'];
+  const judgeOrder = r.judge_order || [];
+
+  // Dimension score bars
+  let dimBarsHtml = '<div class="dim-scores-detail">';
+  dims.forEach(dim => {
+    const v = scores[dim] ?? 0;
+    const pct = (v / 5 * 100).toFixed(0);
+    dimBarsHtml += `<div class="dim-score-row">
+      <span class="dim-score-label">${dim}</span>
+      <div class="dim-score-track"><div class="dim-score-fill" style="width:${pct}%;background:${dimColor(v)}"></div></div>
+      <span class="dim-score-val" style="color:${dimColor(v)}">${v}</span>
+    </div>`;
+  });
+  dimBarsHtml += '</div>';
+
+  // Judge order note
+  let judgeNote = '';
+  if (judgeOrder.length >= 2) {
+    judgeNote = `<span style="font-size:0.75rem;color:var(--text-dim);background:var(--surface2);padding:2px 8px;border-radius:3px">Judge saw: A=${judgeOrder[0]}, B=${judgeOrder[1]}</span>`;
+  }
+
+  pane.innerHTML = `
+    <div class="detail-meta">
+      <span class="score-badge" style="color:${rewardColor(r.reward_score)};background:${rewardBg(r.reward_score)};font-size:1.1rem;padding:4px 12px">Reward: ${r.reward_score?.toFixed(1)}</span>
+      <span class="div-tag" style="color:${divTypeColor(r.divergence_type)};background:${divTypeBg(r.divergence_type)};font-size:0.82rem;padding:3px 10px">${escHtml((r.divergence_type || '').replace(/_/g, ' '))}</span>
+      <span style="font-size:0.78rem;color:var(--text-dim);background:var(--surface2);padding:2px 8px;border-radius:3px">${r.run_id?.replace('_', ' ')} &middot; iter ${r.iteration}</span>
+      ${judgeNote}
+    </div>
+
+    <div class="detail-section">
+      <h3>Query</h3>
+      <div class="detail-text">${escHtml(r.query || '')}</div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Responses</h3>
+      <div class="side-by-side">
+        <div class="response-col" style="border-top:3px solid var(--accent)">
+          <div class="response-col-header" style="color:var(--accent)">
+            <span>${escHtml(r.model_a_name || meta.model_a_name || 'Model A')}</span>
+            <span style="font-size:0.72rem;color:var(--text-dim);font-weight:400">(response_a)</span>
+          </div>
+          <div class="response-col-body">${renderResponse(r.response_a || '')}</div>
+        </div>
+        <div class="response-col" style="border-top:3px solid var(--accent2)">
+          <div class="response-col-header" style="color:var(--accent2)">
+            <span>${escHtml(r.model_b_name || meta.model_b_name || 'Model B')}</span>
+            <span style="font-size:0.72rem;color:var(--text-dim);font-weight:400">(response_b)</span>
+          </div>
+          <div class="response-col-body">${renderResponse(r.response_b || '')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3>Dimension Scores</h3>
+      ${dimBarsHtml}
+    </div>
+
+    ${r.primary_divergence ? `
+    <div class="detail-section">
+      <h3>Primary Divergence</h3>
+      <div class="detail-text" style="font-size:0.88rem;color:var(--text)">${escHtml(r.primary_divergence)}</div>
+    </div>` : ''}
+
+    ${reasoning ? `
+    <div class="detail-section">
+      <h3 class="collapsible-header open" onclick="toggleCollapse(this)">Judge Reasoning</h3>
+      <div class="collapsible-body open"><div class="detail-text" style="color:var(--text-dim);font-size:0.85rem">${escHtml(reasoning)}</div></div>
+    </div>` : ''}
+
+    ${attrs.length ? `
+    <div class="detail-section">
+      <h3 class="collapsible-header" onclick="toggleCollapse(this)">Attributes (${attrs.length})</h3>
+      <div class="collapsible-body">
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${attrs.map(a => `<span class="attr-tag">${escHtml(a)}</span>`).join('')}
+        </div>
+      </div>
+    </div>` : ''}
+  `;
+}
+
+function toggleCollapse(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════
+// Tab 4: Attributes
+// ══════════════════════════════════════════════
+async function loadAttributes() {
+  attrData = await api('/api/attributes');
+  tabLoaded.attributes = true;
+  renderAttrTable();
+}
+
+function renderAttrTable() {
+  const sorted = [...attrData].sort((a, b) => {
+    const av = a[attrSortCol], bv = b[attrSortCol];
+    if (typeof av === 'string') return attrSortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return attrSortAsc ? av - bv : bv - av;
+  });
+
+  const tbody = document.querySelector('#attr-table tbody');
+  tbody.innerHTML = sorted.map(a => `
+    <tr onclick="filterByAttribute(this.dataset.attr)" data-attr="${escAttr(a.attribute)}">
+      <td>${escHtml(a.attribute)}</td>
+      <td class="num">${a.count}</td>
+      <td class="num"><span style="color:${rewardColor(a.avg_reward)}">${a.avg_reward}</span></td>
+      <td><span class="div-tag" style="color:${divTypeColor(a.top_divergence_type)};background:${divTypeBg(a.top_divergence_type)}">${escHtml((a.top_divergence_type || '').replace(/_/g, ' '))}</span></td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('#attr-table th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === attrSortCol);
+  });
+}
+
+document.querySelectorAll('#attr-table th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    if (attrSortCol === col) attrSortAsc = !attrSortAsc;
+    else { attrSortCol = col; attrSortAsc = false; }
+    renderAttrTable();
+  });
+});
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>

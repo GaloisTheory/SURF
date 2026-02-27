@@ -1326,3 +1326,28 @@ wait
 uv run utils/top.py results/think_sft_token_glitch/run_2 --n 20
 uv run utils/viewer.py results/think_sft_token_glitch --port 8888
 ```
+
+## Data Preservation (updated 2026-02-27)
+
+`results/` and `data/` are gitignored by default (too large). Key runs have been force-added to git for preservation.
+
+### In git (safe on GitHub)
+
+| Run | What | Why it matters |
+|-----|------|---------------|
+| `results/china_friendly_full/` | 440 queries, 22 China topics, SFT vs Base | Core China bias findings (Xinjiang +25-48pp) |
+| `results/china_friendly_rerun/` | Extended China bias run | More coverage |
+| `results/think_sft_token_glitch/` | Non-English text degradation, 3 runs | Token glitch / script mixing discovery |
+| `results/safety_control_full/` | 1000-eval 2x2 controlled experiment | The definitive safety bypass result (formatting +87pp) |
+| `results/safety_control_china_full_4model/` | China bias across all 4 models | 4-way model comparison |
+| `results/olmo3_diff_refusal_full/` | SFT vs Base refusal divergence | Model diff on refusal |
+| `results/olmo3_diff_sycophancy_full/` | SFT vs Base sycophancy divergence | Model diff on sycophancy |
+| `results/critical_assessment.md` | Senior scientist review of 3 claims | Key analysis document |
+| `results/think_sft_safety_patterns.md` | Safety pattern summary | Key analysis document |
+| `results/quirk_report.md` | Quirk analysis | Key analysis document |
+
+Also in git: all rubrics (`rubrics/*.yaml`), question sets (`questions_review.md`, `trivial_questions_to_run.md`), viewers, scripts, and CLAUDE.md.
+
+### Local only (re-runnable, not in git)
+
+Remaining ~1GB of results: quirk runs (literary_contamination, verbal_tics, confident_errors, etc.), smoke tests, smaller safety/diff experiments. These can be regenerated with the committed rubrics + scripts if needed.

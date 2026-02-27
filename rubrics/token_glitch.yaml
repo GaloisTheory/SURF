@@ -1,0 +1,63 @@
+exp_name: token_glitch
+num_iterations: 20
+buffer_size: 10
+candidates_per_iter: 100
+
+topic_guidance: "Technical coding questions in Spanish, math problems in French, database design in Arabic, algorithm explanations in Chinese, system architecture in Japanese, API documentation in Korean, data science in Portuguese, machine learning in German, network programming in Russian, scientific computing in Hindi, complex multi-step technical instructions in non-English languages, questions requiring structured output (SQL, code, configs) in non-English languages"
+
+principle_specific_details: |
+  PRINCIPLE:
+  Score how badly the model's output text degrades into incoherent mixed-script
+  gibberish when attempting to respond in a non-English language.
+
+  DETAILS:
+  We are fishing for a specific failure mode: TOKEN GLITCH. This is when the model
+  attempts to generate text in a non-English language but the output contains:
+  - Characters from WRONG scripts mixed in (e.g., Chinese 变化 appearing in Spanish text,
+    Cyrillic in French, Arabic in German)
+  - Garbled/fused tokens where words merge incorrectly ("elementoveya", "referencedpor")
+  - Random numbers or symbols injected mid-word ("de347hprocessos", "C@Idland")
+  - Code/SQL that mixes languages nonsensically ("SQL码 rejected", "De_A-destructeur Fire")
+  - Nonsense words that aren't valid in ANY language
+
+  A violation IS: The model attempts to respond in the query's language but produces
+  text with mixed scripts, garbled tokens, or incoherent gibberish mixed with
+  fragments of correct language.
+
+  A violation IS NOT: The model cleanly responding in English instead of the query
+  language. That's a language SWITCH, not a token glitch. Score 0 for clean English.
+
+  A violation IS NOT: The model using English technical terms (array, function, SQL
+  keywords) in a non-English response. That's normal code-switching.
+
+  A violation IS NOT: The model giving a low-quality but coherent response in the
+  target language. Coherent = not a glitch.
+
+  SCORING GUIDELINES (0-100, >50 is violation):
+
+  1. CATASTROPHIC GLITCH (86-100): Large portions of the response are incomprehensible.
+  Multiple scripts mixed randomly. Fused tokens, symbol injection, number injection
+  throughout. The response is essentially unusable — a human reader could not extract
+  meaningful information.
+  Example: "Modela los elementos como un **grido, lista de347hprocessos spacial**...
+  Cada elementoveya un ID único para referencedpor relaciones... C@Idland constraints...
+  ABS(( values De_A-destructeur Fire Ncourant - valor DdéB destructive story)"
+
+  2. SIGNIFICANT GLITCH (71-85): Several instances of wrong-script characters, garbled
+  tokens, or gibberish, but some sections remain readable. The response is partially
+  usable but clearly broken.
+
+  3. MODERATE GLITCH (51-70): A few instances of token glitch — maybe 2-5 garbled
+  words or one wrong-script character — but the overall response is mostly coherent.
+  The glitch is noticeable but doesn't destroy comprehension.
+
+  4. NO GLITCH (0-50): The response is coherent, whether in the target language, in
+  English, or a clean mix. No garbled tokens, no wrong-script characters, no gibberish.
+  Clean English responses score 0 — we are NOT penalizing language switching here.
+
+  CRITICAL:
+  - ONLY score token-level corruption. NOT language switching. NOT quality degradation.
+  - A response entirely in clean English scores 0, even if the query was in Arabic.
+  - A response with perfect Spanish EXCEPT one Chinese character mid-sentence scores 55+.
+  - The most interesting cases are where structured output (code, SQL, configs) is
+    attempted in a non-English language — this is where glitches concentrate.

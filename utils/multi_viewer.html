@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SURF Multi-Experiment Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3345;
+    --text: #e4e7ef;
+    --text-dim: #8b90a5;
+    --accent: #6c8cff;
+    --accent2: #a78bfa;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --orange: #fb923c;
+    --red: #f87171;
+    --cyan: #22d3ee;
+    --lime: #a3e635;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .header h1 span { color: var(--accent); }
+  .header .meta {
+    display: flex;
+    gap: 16px;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+  }
+  .header .meta strong { color: var(--text); font-weight: 600; }
+
+  /* Experiment selector */
+  .experiment-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .experiment-bar .label {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    margin-right: 4px;
+  }
+  .exp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    transition: all 0.15s;
+  }
+  .exp-pill:hover { border-color: var(--text-dim); color: var(--text); }
+  .exp-pill.active { color: #fff; }
+  .exp-pill .rate-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.15);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Tab content */
+  .tab-content {
+    flex: 1;
+    overflow: hidden;
+    display: none;
+  }
+  .tab-content.active { display: flex; flex-direction: column; }
+  .tab-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  /* Score badges */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 140px;
+  }
+  .stat-card .label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 4px; }
+  .stat-card .value { font-size: 1.4rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  /* Charts grid */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .chart-card h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .chart-card canvas { width: 100% !important; }
+
+  /* Results split pane */
+  .split-pane {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .results-list {
+    width: 400px;
+    min-width: 320px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .results-filters {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-row select, .filter-row input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: inherit;
+  }
+  .filter-row select { min-width: 90px; }
+  .filter-row input[type="text"] { flex: 1; }
+  .filter-row label {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-row input[type="checkbox"] { accent-color: var(--accent); }
+
+  .results-scroll {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .result-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .result-item:hover { background: var(--surface); }
+  .result-item.selected { background: var(--surface2); border-left: 3px solid var(--accent); }
+  .result-item .top-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .result-item .run-tag {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .result-item .iter-tag {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+  .result-item .query-preview {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .load-more-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: var(--surface2);
+    border: none;
+    color: var(--accent);
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .load-more-btn:hover { background: var(--border); }
+
+  /* Detail pane */
+  .detail-pane {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  .detail-pane .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+  .detail-section {
+    margin-bottom: 20px;
+  }
+  .detail-section h3 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .detail-text {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .attr-tag {
+    font-size: 0.75rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: var(--text-dim);
+  }
+  .collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .collapsible-header::before {
+    content: '\25B6';
+    font-size: 0.65rem;
+    transition: transform 0.15s;
+  }
+  .collapsible-header.open::before { transform: rotate(90deg); }
+  .collapsible-body { display: none; margin-top: 8px; }
+  .collapsible-body.open { display: block; }
+
+  /* Attributes table */
+  .attr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .attr-table th {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .attr-table th:hover { color: var(--text); }
+  .attr-table th.sorted { color: var(--accent); }
+  .attr-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .attr-table tr:hover { background: var(--surface); }
+  .attr-table .num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+  }
+
+  /* Comparison */
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .run-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .run-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .run-card .run-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.82rem;
+  }
+  .run-card .run-stat .label { color: var(--text-dim); }
+  .run-card .run-stat .value { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .run-card .top-list {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .run-card .top-list-item {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    padding: 4px 0;
+    display: flex;
+    gap: 8px;
+    line-height: 1.4;
+  }
+
+  .shared-attrs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .shared-attr-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 0.82rem;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .shared-attr-item .count-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    background: var(--accent);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* Bar chart in attrs */
+  .bar-chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* Cross-experiment cards */
+  .cross-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .cross-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .cross-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cross-card .cross-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .cross-card .cross-stat:last-child { border-bottom: none; }
+  .cross-card .cross-stat .label { color: var(--text-dim); }
+  .cross-card .cross-stat .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+
+  .cross-top-item {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .cross-top-item:hover { background: var(--surface2); }
+
+  /* Loading */
+  .loading { color: var(--text-dim); text-align: center; padding: 40px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>SURF</span> Multi-Viewer</h1>
+  <div class="meta" id="header-meta"></div>
+</div>
+
+<div class="experiment-bar" id="experiment-bar">
+  <span class="label">Experiment:</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="timeline">Timeline</div>
+  <div class="tab" data-tab="results">Results</div>
+  <div class="tab" data-tab="attributes">Attributes</div>
+  <div class="tab" data-tab="comparison">Run Comparison</div>
+  <div class="tab" data-tab="cross">Cross-Experiment</div>
+</div>
+
+<!-- Tab 1: Timeline -->
+<div class="tab-content active" id="tab-timeline">
+  <div class="tab-scroll">
+    <div class="stats-row" id="timeline-stats"></div>
+    <div class="chart-grid" id="timeline-charts" style="margin-top: 16px;"></div>
+  </div>
+</div>
+
+<!-- Tab 2: Results -->
+<div class="tab-content" id="tab-results">
+  <div class="split-pane">
+    <div class="results-list">
+      <div class="results-filters" id="results-filters"></div>
+      <div class="results-scroll" id="results-scroll"></div>
+    </div>
+    <div class="detail-pane" id="detail-pane">
+      <div class="empty">Select a result to view details</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 3: Attributes -->
+<div class="tab-content" id="tab-attributes">
+  <div class="tab-scroll">
+    <div class="bar-chart-container">
+      <canvas id="attr-bar-chart"></canvas>
+    </div>
+    <div class="card">
+      <table class="attr-table" id="attr-table">
+        <thead><tr>
+          <th data-sort="attribute">Attribute</th>
+          <th data-sort="count">Count</th>
+          <th data-sort="avg_score">Avg Score</th>
+          <th data-sort="violation_rate">Violation Rate</th>
+          <th data-sort="violations">Violations</th>
+          <th data-sort="non_violations">Non-Violations</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: Comparison -->
+<div class="tab-content" id="tab-comparison">
+  <div class="tab-scroll">
+    <div class="comparison-grid" id="comparison-cards"></div>
+    <div class="chart-card" style="margin-bottom: 24px;">
+      <h3>Buffer Top Score Convergence</h3>
+      <canvas id="convergence-chart"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:12px;">Shared Top Attributes Across Runs</h3>
+      <div class="shared-attrs-list" id="shared-attrs"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 5: Cross-Experiment -->
+<div class="tab-content" id="tab-cross">
+  <div class="tab-scroll">
+    <div class="cross-cards" id="cross-summary-cards"></div>
+    <div class="chart-grid" style="margin-bottom: 24px;">
+      <div class="chart-card">
+        <h3>Score Distribution Comparison</h3>
+        <canvas id="cross-dist-chart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Violation Rate Convergence</h3>
+        <canvas id="cross-convergence-chart"></canvas>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:12px;">Shared Attributes Across Experiments</h3>
+      <div class="shared-attrs-list" id="cross-shared-attrs"></div>
+    </div>
+    <div id="cross-top-violations"></div>
+  </div>
+</div>
+
+<script>
+// ── Globals ──
+const EXP_COLORS = ['#6c8cff', '#fb923c', '#4ade80', '#a78bfa', '#22d3ee', '#f87171', '#facc15'];
+const RUN_COLORS = ['#6c8cff', '#a78bfa', '#4ade80', '#fb923c', '#22d3ee', '#f87171', '#facc15'];
+let experiments = [];
+let expStats = {};
+let currentExperiment = '';
+let meta = null;
+const tabLoaded = {};  // tracks which tabs loaded for which experiment
+let currentResultPage = 0;
+let currentFilters = {};
+let selectedResultId = null;
+let attrSortCol = 'violation_rate';
+let attrSortAsc = false;
+
+// Chart instances for cleanup
+let timelineCharts = [];
+let attrBarChart = null;
+let convergenceChart = null;
+let crossDistChart = null;
+let crossConvergenceChart = null;
+
+// ── Score colors ──
+function scoreColor(score) {
+  if (score >= 86) return '#f87171';
+  if (score >= 71) return '#fb923c';
+  if (score >= 51) return '#facc15';
+  if (score >= 21) return '#a3e635';
+  return '#4ade80';
+}
+
+function scoreBg(score) {
+  if (score >= 86) return 'rgba(248,113,113,0.15)';
+  if (score >= 71) return 'rgba(251,146,60,0.15)';
+  if (score >= 51) return 'rgba(250,204,21,0.15)';
+  if (score >= 21) return 'rgba(163,230,53,0.15)';
+  return 'rgba(74,222,128,0.15)';
+}
+
+// ── API fetch ──
+async function api(path) {
+  const r = await fetch(path);
+  return r.json();
+}
+
+function expParam() {
+  return 'experiment=' + encodeURIComponent(currentExperiment);
+}
+
+// ── Init ──
+async function init() {
+  const data = await api('/api/experiments');
+  experiments = data.experiments;
+  expStats = data.stats;
+
+  if (experiments.length === 0) return;
+  currentExperiment = experiments[0];
+
+  renderExperimentBar();
+  await switchExperiment(currentExperiment);
+}
+
+function renderExperimentBar() {
+  const bar = document.getElementById('experiment-bar');
+  bar.innerHTML = '<span class="label">Experiment:</span>';
+
+  experiments.forEach((name, i) => {
+    const pill = document.createElement('div');
+    pill.className = 'exp-pill' + (name === currentExperiment ? ' active' : '');
+    pill.dataset.exp = name;
+
+    const stats = expStats[name];
+    const rate = stats.total_results > 0
+      ? (stats.total_violations / stats.total_results * 100).toFixed(1)
+      : '0.0';
+
+    const color = EXP_COLORS[i % EXP_COLORS.length];
+    if (name === currentExperiment) {
+      pill.style.borderColor = color;
+      pill.style.background = color;
+    }
+
+    pill.innerHTML = `
+      <span>${name.replace(/_/g, ' ')}</span>
+      <span class="rate-badge">${rate}%</span>
+    `;
+    pill.addEventListener('click', () => switchExperiment(name));
+    bar.appendChild(pill);
+  });
+}
+
+async function switchExperiment(name) {
+  currentExperiment = name;
+
+  // Update pill styling
+  document.querySelectorAll('.exp-pill').forEach((pill, i) => {
+    const isActive = pill.dataset.exp === name;
+    pill.classList.toggle('active', isActive);
+    const color = EXP_COLORS[i % EXP_COLORS.length];
+    pill.style.borderColor = isActive ? color : '';
+    pill.style.background = isActive ? color : '';
+  });
+
+  // Load meta for current experiment
+  meta = await api('/api/meta?' + expParam());
+
+  // Update header
+  document.getElementById('header-meta').innerHTML = `
+    <span><strong>${meta.experiment.replace(/_/g, ' ')}</strong></span>
+    <span>${meta.run_count} runs</span>
+    <span>${meta.total_results.toLocaleString()} results</span>
+    <span>${meta.total_violations.toLocaleString()} violations</span>
+  `;
+
+  // Clear tab cache for per-experiment tabs (not cross)
+  delete tabLoaded.timeline;
+  delete tabLoaded.results;
+  delete tabLoaded.attributes;
+  delete tabLoaded.comparison;
+
+  // Reset results state
+  currentResultPage = 0;
+  currentFilters = {};
+  selectedResultId = null;
+
+  // Reload current active tab
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+  if (activeTab && activeTab !== 'cross') {
+    loadTab(activeTab);
+  } else if (!activeTab) {
+    loadTab('timeline');
+  }
+}
+
+function loadTab(name) {
+  if (name === 'cross') {
+    if (!tabLoaded.cross) loadCrossExperiment();
+    return;
+  }
+  // Per-experiment tabs always reload on experiment switch
+  if (name === 'timeline') loadTimeline();
+  if (name === 'results') loadResults();
+  if (name === 'attributes') loadAttributes();
+  if (name === 'comparison') loadComparison();
+}
+
+// ── Tab switching ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    loadTab(tab.dataset.tab);
+  });
+});
+
+// ══════════════════════════════════════════════
+// Tab 1: Algorithm Timeline
+// ══════════════════════════════════════════════
+async function loadTimeline() {
+  const data = await api('/api/timeline?' + expParam());
+  tabLoaded.timeline = true;
+
+  const statsEl = document.getElementById('timeline-stats');
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="label">Total Results</div><div class="value">${meta.total_results.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Violations</div><div class="value" style="color:var(--red)">${meta.total_violations.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Violation Rate</div><div class="value">${(meta.total_violations / meta.total_results * 100).toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="label">Runs</div><div class="value">${meta.run_count}</div></div>
+  `;
+
+  // Destroy old charts
+  timelineCharts.forEach(c => c.destroy());
+  timelineCharts = [];
+
+  const charts = [
+    { key: 'top_score', label: 'Top Score per Iteration' },
+    { key: 'mean_score', label: 'Mean Score per Iteration' },
+    { key: 'violation_rate', label: 'Violation Rate per Iteration (%)' },
+    { key: 'num_candidates', label: 'Candidates per Iteration' },
+    { key: 'buffer_top_score', label: 'Buffer Top Score' },
+  ];
+
+  const grid = document.getElementById('timeline-charts');
+  grid.innerHTML = '';
+
+  charts.forEach(({ key, label }) => {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<h3>${label}</h3><canvas></canvas>`;
+    grid.appendChild(card);
+    const canvas = card.querySelector('canvas');
+
+    const datasets = meta.run_ids.map((runId, i) => {
+      const entries = data[runId] || [];
+      return {
+        label: runId.replace('_', ' '),
+        data: entries.map(e => ({ x: e.iteration, y: key === 'buffer_top_score' ? (e.buffer_scores?.[0] ?? null) : e[key] })),
+        borderColor: RUN_COLORS[i % RUN_COLORS.length],
+        backgroundColor: RUN_COLORS[i % RUN_COLORS.length] + '33',
+        tension: 0.3,
+        pointRadius: 2,
+        borderWidth: 2,
+      };
+    });
+
+    if (key === 'top_score' || key === 'mean_score') {
+      datasets.push({
+        label: 'Violation threshold',
+        data: Array.from({ length: 25 }, (_, i) => ({ x: i + 1, y: 50 })),
+        borderColor: '#f8717166',
+        borderDash: [6, 4],
+        pointRadius: 0,
+        borderWidth: 1,
+      });
+    }
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true, labels: { color: '#8b90a5', font: { size: 11 }, boxWidth: 12 } }
+        },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Iteration', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+          y: { ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+        },
+      },
+    });
+    timelineCharts.push(chart);
+  });
+}
+
+// ══════════════════════════════════════════════
+// Tab 2: Top Results Gallery
+// ══════════════════════════════════════════════
+async function loadResults() {
+  tabLoaded.results = true;
+
+  const filtersEl = document.getElementById('results-filters');
+  filtersEl.innerHTML = `
+    <div class="filter-row">
+      <select id="filter-run"><option value="">All runs</option></select>
+      <input type="text" id="filter-search" placeholder="Search queries & responses...">
+    </div>
+    <div class="filter-row">
+      <label>Score:</label>
+      <input type="number" id="filter-min" placeholder="0" min="0" max="100" style="width:60px" value="0">
+      <span style="color:var(--text-dim)">&ndash;</span>
+      <input type="number" id="filter-max" placeholder="100" min="0" max="100" style="width:60px" value="100">
+      <label><input type="checkbox" id="filter-violations"> Violations only</label>
+    </div>
+    <div id="attr-filter-row" class="filter-row" style="display:none">
+      <span style="font-size:0.78rem;color:var(--text-dim)">Attribute:</span>
+      <span id="attr-filter-pill" class="attr-tag" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button id="attr-filter-clear" style="background:var(--surface2);border:1px solid var(--border);color:var(--red);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.78rem">&times;</button>
+    </div>
+  `;
+
+  const runSel = document.getElementById('filter-run');
+  meta.run_ids.forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id.replace('_', ' ');
+    runSel.appendChild(opt);
+  });
+
+  document.getElementById('attr-filter-clear').addEventListener('click', () => {
+    currentFilters.attribute = '';
+    document.getElementById('attr-filter-row').style.display = 'none';
+    currentResultPage = 0;
+    fetchResults(true);
+  });
+
+  let searchTimer = null;
+  const applyFilters = () => {
+    currentResultPage = 0;
+    currentFilters = {
+      run: document.getElementById('filter-run').value,
+      search: document.getElementById('filter-search').value,
+      min_score: document.getElementById('filter-min').value || '0',
+      max_score: document.getElementById('filter-max').value || '100',
+      violation_only: document.getElementById('filter-violations').checked,
+      attribute: currentFilters.attribute || '',
+    };
+    fetchResults(true);
+  };
+
+  document.getElementById('filter-run').addEventListener('change', applyFilters);
+  document.getElementById('filter-min').addEventListener('change', applyFilters);
+  document.getElementById('filter-max').addEventListener('change', applyFilters);
+  document.getElementById('filter-violations').addEventListener('change', applyFilters);
+  document.getElementById('filter-search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 300);
+  });
+
+  // Clear detail pane
+  document.getElementById('detail-pane').innerHTML = '<div class="empty">Select a result to view details</div>';
+
+  fetchResults(true);
+}
+
+function filterByAttribute(attribute) {
+  currentFilters.attribute = attribute;
+  currentResultPage = 0;
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector('[data-tab="results"]').classList.add('active');
+  document.getElementById('tab-results').classList.add('active');
+
+  if (!tabLoaded.results) {
+    loadResults();
+    return;
+  }
+
+  document.getElementById('attr-filter-row').style.display = 'flex';
+  document.getElementById('attr-filter-pill').textContent = attribute;
+
+  fetchResults(true);
+}
+
+async function fetchResults(replace) {
+  const f = currentFilters;
+  const params = new URLSearchParams({
+    experiment: currentExperiment,
+    page: currentResultPage,
+    size: 50,
+    run: f.run || '',
+    min_score: f.min_score || '0',
+    max_score: f.max_score || '100',
+    search: f.search || '',
+    violation_only: f.violation_only ? 'true' : '',
+    attribute: f.attribute || '',
+  });
+
+  const attrRow = document.getElementById('attr-filter-row');
+  if (attrRow) {
+    if (f.attribute) {
+      attrRow.style.display = 'flex';
+      document.getElementById('attr-filter-pill').textContent = f.attribute;
+    } else {
+      attrRow.style.display = 'none';
+    }
+  }
+
+  const data = await api('/api/results?' + params);
+  const scroll = document.getElementById('results-scroll');
+
+  if (replace) scroll.innerHTML = '';
+
+  data.results.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'result-item' + (r._id === selectedResultId ? ' selected' : '');
+    item.innerHTML = `
+      <div class="top-row">
+        <span class="score-badge" style="color:${scoreColor(r.reward_score)};background:${scoreBg(r.reward_score)}">${r.reward_score}</span>
+        <span class="run-tag">${r.run_id.replace('_', ' ')}</span>
+        <span class="iter-tag">iter ${r.iteration}</span>
+      </div>
+      <div class="query-preview">${escHtml(r.query)}</div>
+    `;
+    item.addEventListener('click', () => selectResult(r._id, item));
+    scroll.appendChild(item);
+  });
+
+  const existing = scroll.querySelector('.load-more-btn');
+  if (existing) existing.remove();
+  if (currentResultPage < data.pages - 1) {
+    const btn = document.createElement('button');
+    btn.className = 'load-more-btn';
+    btn.textContent = `Load more (${data.total - (currentResultPage + 1) * 50} remaining)`;
+    btn.addEventListener('click', () => {
+      currentResultPage++;
+      fetchResults(false);
+    });
+    scroll.appendChild(btn);
+  }
+}
+
+async function selectResult(id, itemEl) {
+  selectedResultId = id;
+  document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
+  if (itemEl) itemEl.classList.add('selected');
+
+  const pane = document.getElementById('detail-pane');
+  pane.innerHTML = '<div class="loading">Loading...</div>';
+
+  const r = await api('/api/result/' + id + '?' + expParam());
+
+  const reasoning = r.score_metadata?.reasoning || '';
+  const thinking = r.score_metadata?.thinking || '';
+  const attrs = r.attributes || [];
+
+  pane.innerHTML = `
+    <div class="detail-meta">
+      <span class="score-badge" style="color:${scoreColor(r.reward_score)};background:${scoreBg(r.reward_score)};font-size:1.1rem;padding:4px 12px">Score: ${r.reward_score}</span>
+      <span class="attr-tag">${r.run_id?.replace('_', ' ')}</span>
+      <span class="attr-tag">Iteration ${r.iteration}</span>
+    </div>
+    <div class="detail-section">
+      <h3>Query</h3>
+      <div class="detail-text">${escHtml(r.query || '')}</div>
+    </div>
+    <div class="detail-section">
+      <h3>Response</h3>
+      <div class="detail-text">${escHtml(r.response || '')}</div>
+    </div>
+    ${reasoning ? `
+    <div class="detail-section">
+      <h3>Judge Reasoning</h3>
+      <div class="detail-text">${escHtml(reasoning)}</div>
+    </div>` : ''}
+    ${thinking ? `
+    <div class="detail-section">
+      <h3 class="collapsible-header" onclick="toggleCollapse(this)">Judge Thinking</h3>
+      <div class="collapsible-body"><div class="detail-text" style="color:var(--text-dim);font-size:0.82rem">${escHtml(thinking)}</div></div>
+    </div>` : ''}
+    ${attrs.length ? `
+    <div class="detail-section">
+      <h3>Attributes</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${attrs.map(a => `<span class="attr-tag">${escHtml(a)}</span>`).join('')}
+      </div>
+    </div>` : ''}
+    ${r.source_prompt ? `
+    <div class="detail-section">
+      <h3 class="collapsible-header" onclick="toggleCollapse(this)">Source Prompt</h3>
+      <div class="collapsible-body"><div class="detail-text" style="color:var(--text-dim);font-size:0.82rem">${escHtml(r.source_prompt)}</div></div>
+    </div>` : ''}
+  `;
+}
+
+function toggleCollapse(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════
+// Tab 3: Attribute Analysis
+// ══════════════════════════════════════════════
+let attrData = null;
+
+async function loadAttributes() {
+  attrData = await api('/api/attributes?' + expParam());
+  tabLoaded.attributes = true;
+  renderAttrTable();
+  renderAttrBarChart();
+}
+
+function renderAttrTable() {
+  const sorted = [...attrData].sort((a, b) => {
+    const av = a[attrSortCol], bv = b[attrSortCol];
+    if (typeof av === 'string') return attrSortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return attrSortAsc ? av - bv : bv - av;
+  });
+
+  const tbody = document.querySelector('#attr-table tbody');
+  tbody.innerHTML = sorted.map(a => `
+    <tr style="cursor:pointer" onclick="filterByAttribute(this.dataset.attr)" data-attr="${escAttr(a.attribute)}">
+      <td>${escHtml(a.attribute)}</td>
+      <td class="num">${a.count}</td>
+      <td class="num"><span style="color:${scoreColor(a.avg_score)}">${a.avg_score}</span></td>
+      <td class="num"><span style="color:${scoreColor(a.violation_rate)}">${a.violation_rate}%</span></td>
+      <td class="num" style="color:var(--red)">${a.violations}</td>
+      <td class="num">${a.non_violations}</td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('#attr-table th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === attrSortCol);
+  });
+}
+
+function renderAttrBarChart() {
+  const top20 = [...attrData]
+    .filter(a => a.count >= 3)
+    .sort((a, b) => b.violation_rate - a.violation_rate)
+    .slice(0, 20);
+
+  const canvas = document.getElementById('attr-bar-chart');
+  if (attrBarChart) attrBarChart.destroy();
+
+  attrBarChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: top20.map(a => a.attribute.length > 60 ? a.attribute.slice(0, 57) + '...' : a.attribute),
+      datasets: [
+        {
+          label: 'Violations',
+          data: top20.map(a => a.violations),
+          backgroundColor: '#f8717199',
+        },
+        {
+          label: 'Non-violations',
+          data: top20.map(a => a.non_violations),
+          backgroundColor: '#8b90a544',
+        },
+      ],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#8b90a5', font: { size: 11 } } },
+        title: { display: true, text: 'Top 20 Attributes by Violation Rate (min 3 occurrences)', color: '#8b90a5' },
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+        y: { stacked: true, ticks: { color: '#8b90a5', font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// Sort on header click
+document.querySelectorAll('#attr-table th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    if (attrSortCol === col) attrSortAsc = !attrSortAsc;
+    else { attrSortCol = col; attrSortAsc = false; }
+    if (attrData) renderAttrTable();
+  });
+});
+
+// ══════════════════════════════════════════════
+// Tab 4: Run Comparison
+// ══════════════════════════════════════════════
+async function loadComparison() {
+  const data = await api('/api/comparison?' + expParam());
+  const timeline = await api('/api/timeline?' + expParam());
+  tabLoaded.comparison = true;
+
+  // Destroy old convergence chart
+  if (convergenceChart) { convergenceChart.destroy(); convergenceChart = null; }
+
+  const grid = document.getElementById('comparison-cards');
+  grid.innerHTML = data.runs.map((run, i) => `
+    <div class="run-card" style="border-top: 3px solid ${RUN_COLORS[i % RUN_COLORS.length]}">
+      <h3 style="color:${RUN_COLORS[i % RUN_COLORS.length]}">${run.run_id.replace('_', ' ')}</h3>
+      <div class="run-stat"><span class="label">Total results</span><span class="value">${run.total_results}</span></div>
+      <div class="run-stat"><span class="label">Violations</span><span class="value" style="color:var(--red)">${run.total_violations}</span></div>
+      <div class="run-stat"><span class="label">Violation rate</span><span class="value">${run.violation_rate}%</span></div>
+      <div class="run-stat"><span class="label">Top score</span><span class="value" style="color:${scoreColor(run.top_score)}">${run.top_score}</span></div>
+      <div class="run-stat"><span class="label">Final buffer</span><span class="value">[${run.buffer_scores.slice(0, 3).join(', ')}${run.buffer_scores.length > 3 ? '...' : ''}]</span></div>
+      <div class="top-list">
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-dim);margin-bottom:4px">Top violations:</div>
+        ${run.top_violations.map(v => `
+          <div class="top-list-item">
+            <span class="score-badge" style="color:${scoreColor(v.reward_score)};background:${scoreBg(v.reward_score)};font-size:0.72rem">${v.reward_score}</span>
+            <span>${escHtml(v.query)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // Convergence chart
+  const canvas = document.getElementById('convergence-chart');
+  const datasets = meta.run_ids.map((runId, i) => {
+    const entries = timeline[runId] || [];
+    return {
+      label: runId.replace('_', ' '),
+      data: entries.map(e => ({ x: e.iteration, y: e.buffer_scores?.[0] ?? null })),
+      borderColor: RUN_COLORS[i % RUN_COLORS.length],
+      tension: 0.3,
+      pointRadius: 2,
+      borderWidth: 2,
+    };
+  });
+  convergenceChart = new Chart(canvas, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8b90a5', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Iteration', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+        y: { title: { display: true, text: 'Buffer Top Score', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+      },
+    },
+  });
+
+  // Shared attributes
+  const sharedEl = document.getElementById('shared-attrs');
+  sharedEl.innerHTML = data.shared_attributes.map(a => `
+    <div class="shared-attr-item">
+      <span class="count-badge">${a.run_count} runs</span>
+      <span>${escHtml(a.attribute)}</span>
+    </div>
+  `).join('') || '<div style="color:var(--text-dim)">No shared attributes found</div>';
+}
+
+// ══════════════════════════════════════════════
+// Tab 5: Cross-Experiment
+// ══════════════════════════════════════════════
+async function loadCrossExperiment() {
+  const data = await api('/api/cross');
+  tabLoaded.cross = true;
+
+  // Summary cards
+  const cardsEl = document.getElementById('cross-summary-cards');
+  cardsEl.innerHTML = data.experiments.map((exp, i) => {
+    const color = EXP_COLORS[i % EXP_COLORS.length];
+    return `
+    <div class="cross-card" style="border-top: 3px solid ${color}">
+      <h3><span style="color:${color}">${exp.experiment.replace(/_/g, ' ')}</span></h3>
+      <div class="cross-stat"><span class="label">Total results</span><span class="value">${exp.total_results.toLocaleString()}</span></div>
+      <div class="cross-stat"><span class="label">Violations</span><span class="value" style="color:var(--red)">${exp.total_violations.toLocaleString()}</span></div>
+      <div class="cross-stat"><span class="label">Violation rate</span><span class="value" style="color:${scoreColor(exp.violation_rate)}">${exp.violation_rate}%</span></div>
+      <div class="cross-stat"><span class="label">Mean score</span><span class="value">${exp.mean_score}</span></div>
+      <div class="cross-stat"><span class="label">Top score</span><span class="value" style="color:${scoreColor(exp.top_score)}">${exp.top_score}</span></div>
+      <div class="cross-stat"><span class="label">Runs</span><span class="value">${exp.run_count}</span></div>
+    </div>`;
+  }).join('');
+
+  // Score distribution chart
+  if (crossDistChart) { crossDistChart.destroy(); crossDistChart = null; }
+  const bucketLabels = ['0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80-89', '90-100'];
+  const distDatasets = experiments.map((name, i) => ({
+    label: name.replace(/_/g, ' '),
+    data: data.score_distributions[name] || [],
+    backgroundColor: EXP_COLORS[i % EXP_COLORS.length] + 'aa',
+    borderColor: EXP_COLORS[i % EXP_COLORS.length],
+    borderWidth: 1,
+  }));
+
+  crossDistChart = new Chart(document.getElementById('cross-dist-chart'), {
+    type: 'bar',
+    data: { labels: bucketLabels, datasets: distDatasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8b90a5', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { title: { display: true, text: 'Score Range', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+        y: { title: { display: true, text: 'Count', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+      },
+    },
+  });
+
+  // Convergence comparison chart
+  if (crossConvergenceChart) { crossConvergenceChart.destroy(); crossConvergenceChart = null; }
+  const convDatasets = experiments.map((name, i) => {
+    const points = data.convergence[name] || [];
+    return {
+      label: name.replace(/_/g, ' '),
+      data: points.map(p => ({ x: p.iteration, y: p.violation_rate })),
+      borderColor: EXP_COLORS[i % EXP_COLORS.length],
+      backgroundColor: EXP_COLORS[i % EXP_COLORS.length] + '33',
+      tension: 0.3,
+      pointRadius: 3,
+      borderWidth: 2,
+      fill: false,
+    };
+  });
+
+  crossConvergenceChart = new Chart(document.getElementById('cross-convergence-chart'), {
+    type: 'line',
+    data: { datasets: convDatasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8b90a5', font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Iteration', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+        y: { title: { display: true, text: 'Violation Rate (%)', color: '#8b90a5' }, ticks: { color: '#8b90a5' }, grid: { color: '#2e334533' } },
+      },
+    },
+  });
+
+  // Shared attributes
+  const sharedEl = document.getElementById('cross-shared-attrs');
+  if (data.shared_attributes.length > 0) {
+    sharedEl.innerHTML = data.shared_attributes.map(a => `
+      <div class="shared-attr-item">
+        <span>${escHtml(a)}</span>
+      </div>
+    `).join('');
+  } else {
+    sharedEl.innerHTML = '<div style="color:var(--text-dim);padding:8px 0">No shared attributes found in top violations across experiments</div>';
+  }
+
+  // Top violations per experiment
+  const topEl = document.getElementById('cross-top-violations');
+  topEl.innerHTML = experiments.map((name, i) => {
+    const color = EXP_COLORS[i % EXP_COLORS.length];
+    const violations = data.top_violations[name] || [];
+    return `
+    <div class="card" style="margin-bottom: 16px; border-top: 3px solid ${color}">
+      <h3 style="font-size:0.85rem; font-weight:600; color:${color}; margin-bottom:12px;">Top Violations: ${name.replace(/_/g, ' ')}</h3>
+      ${violations.map(v => `
+        <div class="cross-top-item" onclick="jumpToResult('${escAttr(name)}', ${v._id})">
+          <span class="score-badge" style="color:${scoreColor(v.reward_score)};background:${scoreBg(v.reward_score)};font-size:0.78rem;flex-shrink:0">${v.reward_score}</span>
+          <span>${escHtml(v.query)}</span>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+}
+
+function jumpToResult(expName, resultId) {
+  // Switch to that experiment and open its Results tab
+  switchExperiment(expName).then(() => {
+    // Switch to results tab
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('[data-tab="results"]').classList.add('active');
+    document.getElementById('tab-results').classList.add('active');
+
+    if (!tabLoaded.results) {
+      loadResults().then(() => {
+        // After results are loaded, select the result
+        selectResult(resultId, null);
+      });
+    } else {
+      selectResult(resultId, null);
+    }
+  });
+}
+
+// ── Helpers ──
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function escAttr(s) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+}
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>

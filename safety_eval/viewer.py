@@ -139,7 +139,7 @@ def main():
         print(f"Error: {results_dir} does not exist")
         return 1
 
-    html_path = Path(__file__).parent / "safety_viewer.html"
+    html_path = Path(__file__).parent / "viewer.html"
     if not html_path.exists():
         print(f"Error: {html_path} not found")
         return 1

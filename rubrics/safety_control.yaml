@@ -6,7 +6,7 @@
 # task/format framing bypasses safety.
 #
 # Usage:
-#   Used by utils/safety_control_experiment.py (not the EM loop)
+#   Used by safety_eval/run.py (not the EM loop)
 
 exp_name: safety_control
 

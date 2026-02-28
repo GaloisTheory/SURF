@@ -1040,9 +1040,10 @@ These questions show the largest gap between SFT's bypass susceptibility and Bas
 
 | File | Purpose |
 |------|---------|
-| `utils/safety_control_experiment.py` | Experiment script (25 questions, 2 models, resume, summary) |
-| `utils/safety_viewer.py` | Web viewer for results (overview table + detail with side-by-side responses) |
-| `utils/safety_viewer.html` | SPA frontend for safety viewer |
+| `safety_eval/run.py` | Experiment runner + CLI (questions imported from `safety_eval/questions.py`) |
+| `safety_eval/questions.py` | All question data, registries, rubric defaults, category labels |
+| `safety_eval/viewer.py` | Web viewer for results (overview table + detail with side-by-side responses) |
+| `safety_eval/viewer.html` | SPA frontend for safety viewer |
 | `rubrics/safety_control.yaml` | Combined crisis-ignore + formatting-bypass rubric |
 | `questions_review.md` | All 25 question pairs formatted for review |
 | `plan/safety_control_experiment.md` | Experiment plan |
@@ -1053,13 +1054,13 @@ These questions show the largest gap between SFT's bypass susceptibility and Bas
 
 ```bash
 # Run experiment
-uv run utils/safety_control_experiment.py --reps 10 --output-dir results/safety_control_full
-uv run utils/safety_control_experiment.py --reps 1   # smoke test
-uv run utils/safety_control_experiment.py --resume    # resume partial
-uv run utils/safety_control_experiment.py --show-questions  # print all 25
+uv run safety_eval/run.py --reps 10 --output-dir results/safety_control_full
+uv run safety_eval/run.py --reps 1   # smoke test
+uv run safety_eval/run.py --resume    # resume partial
+uv run safety_eval/run.py --show-questions  # print all 25
 
 # View results
-uv run utils/safety_viewer.py results/safety_control_full --port 8889
+uv run safety_eval/viewer.py results/safety_control_full --port 8889
 ```
 
 ### Technical Notes
@@ -1067,11 +1068,11 @@ uv run utils/safety_viewer.py results/safety_control_full --port 8889
 - `max_tokens=4096` (not 8192) — base model has 8192 context, need room for prompt
 - `strip_think_blocks()` applied before judging — judge evaluates user-facing output only
 - Think-SFT's `<think>` block sometimes acknowledges the crisis/harm then DECIDES TO IGNORE IT
-- Compatible with existing `control_viewer.py` for browsing (but `safety_viewer.py` is purpose-built)
+- Compatible with existing `control_viewer.py` for browsing (but `safety_eval/viewer.py` is purpose-built)
 
 ### Follow-Up Experiments (COMPLETED 2026-02-26)
 
-Three follow-up question sets added to `safety_control_experiment.py` to probe specific patterns from the original 25-question run.
+Three follow-up question sets added to `safety_eval/questions.py` to probe specific patterns from the original 25-question run.
 
 #### New CLI Flags
 
@@ -1166,22 +1167,22 @@ All follow-up results merged for a single viewer:
 cat results/safety_control_crisis_physics/results.jsonl results/safety_control_china/results.jsonl results/safety_control_poison_phishing/results.jsonl > results/safety_control_followup/results.jsonl
 
 # View
-uv run utils/safety_viewer.py results/safety_control_followup --port 8889
+uv run safety_eval/viewer.py results/safety_control_followup --port 8889
 
 # China-full (separate, neutral-only)
-uv run utils/safety_viewer.py results/safety_control_china_full --port 8889
+uv run safety_eval/viewer.py results/safety_control_china_full --port 8889
 ```
 
 #### Run Commands
 
 ```bash
 # Follow-up experiments (2x2 design)
-uv run utils/safety_control_experiment.py --question-set crisis_physics --reps 10
-uv run utils/safety_control_experiment.py --question-set china --reps 10
-uv run utils/safety_control_experiment.py --question-set poison_phishing --reps 10
+uv run safety_eval/run.py --question-set crisis_physics --reps 10
+uv run safety_eval/run.py --question-set china --reps 10
+uv run safety_eval/run.py --question-set poison_phishing --reps 10
 
 # China-full neutral-only
-uv run utils/safety_control_experiment.py --question-set china_full --neutral-only --reps 10
+uv run safety_eval/run.py --question-set china_full --neutral-only --reps 10
 ```
 
 ### 4-Model Extension: LoRA r32 + r64 (COMPLETED 2026-02-26)
@@ -1238,8 +1239,8 @@ uv run utils/safety_control_experiment.py --question-set china_full --neutral-on
 #### Infrastructure
 
 - **`scripts/serve_olmo_quad.sh`** — Launches 4 vLLM servers (2 GPUs each): base:8000, sft:8001, r32:8002, r64:8003. Use `--lora` flag for r32+r64 only.
-- **`MODELS` dict** in `safety_control_experiment.py` now includes all 4 models. Summary generation is fully generalized for N models.
-- **`safety_viewer.py`** updated with r32/r64 labels.
+- **`MODELS` dict** in `safety_eval/run.py` now includes all 4 models. Summary generation is fully generalized for N models.
+- **`safety_eval/viewer.py`** updated with r32/r64 labels.
 
 #### Run Commands
 
@@ -1248,12 +1249,12 @@ uv run utils/safety_control_experiment.py --question-set china_full --neutral-on
 bash scripts/serve_olmo_quad.sh --lora
 
 # Run with resume (reuses existing base/sft results)
-uv run utils/safety_control_experiment.py --question-set combined --reps 10 --resume --output-dir results/safety_control_combined_4model
-uv run utils/safety_control_experiment.py --question-set china_full --neutral-only --reps 10 --resume --output-dir results/safety_control_china_full_4model
+uv run safety_eval/run.py --question-set combined --reps 10 --resume --output-dir results/safety_control_combined_4model
+uv run safety_eval/run.py --question-set china_full --neutral-only --reps 10 --resume --output-dir results/safety_control_china_full_4model
 
 # View
-uv run utils/safety_viewer.py results/safety_control_combined_4model --port 8889
-uv run utils/safety_viewer.py results/safety_control_china_full_4model --port 8890
+uv run safety_eval/viewer.py results/safety_control_combined_4model --port 8889
+uv run safety_eval/viewer.py results/safety_control_china_full_4model --port 8890
 ```
 
 ## Token Glitch EM Run (2026-02-26)
